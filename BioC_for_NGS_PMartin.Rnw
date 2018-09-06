@@ -13,7 +13,7 @@ BiocStyle::latex()
 
 %Title and author:
 \bioctitle[BioC for NGS data analysis]{An introduction to \R{} and \Bioconductor{} for the analysis of high-throughput sequencing data}
-\author{Pascal MARTIN\thanks{\email{Pascal.Martin@inra.fr}}}
+\author{Pascal MARTIN\thanks{\email{Pascal.Martin@inra.fr} \\ Twitter: \href{https://twitter.com/PgpMartin}{@PgpMartin} \\ Github: \href{https://github.com/pgpmartin/}{pgpmartin}}}
 
 \begin{document}
 
@@ -71,7 +71,7 @@ library(Gviz)
 \subsection{What is \R{}/\Bioconductor{}?}
 %===================================
 
-If you start reading this document, you probably already know \R{}, a language and environment for statistical computing and graphics. My only suggestion is to frequently visit the \href{http://www.r-project.org/}{\R{} website} to get the latest update and news. More than 6000 packages are available on the Comprehensive R Archive Network (\href{http://cran.r-project.org/mirrors.html}{CRAN}) to extend the functionalities of \R{}. The increasing use of \R{}, especially in the life science community has been recently illustrated~\cite{pmid25557714}. \\
+\R{} is a language and environment for statistical computing and graphics. The latest news and updates can be found on the \href{http://www.r-project.org/}{\R{} website}. More than 6000 packages are available on the Comprehensive R Archive Network (\href{http://cran.r-project.org/mirrors.html}{CRAN}) to extend the functionalities of \R{}. \R{} is increasingly used in different fields, including life science~\cite{pmid25557714}. \\
 With more than 2000 packages, \Bioconductor{} is the largest project associated to \R{}. It is dedicated to bioinformatics~\cite{pmid15461798} and proposes 3 types of packages:
 
 \begin{itemize}
@@ -80,29 +80,31 @@ With more than 2000 packages, \Bioconductor{} is the largest project associated 
   \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_ExperimentData}{Experiment Data packages} contain Experimental data
 \end{itemize}
 
-Again, the \href{http://bioconductor.org/}{\Bioconductor{} website} is a great resource to get the latest (frequent) updates and to find help and tutorials.\\
-One of the most notable advantage of \R{} and \Bioconductor{} is the vast amount of learning resources available. In addition to the package vignettes (i.e. documentation), the \href{http://bioconductor.org/help/workflows/}{\Bioconductor{} workflows} and \href{http://bioconductor.org/help/course-materials/}{Courses and Conferences section} are great resources.\\
+The \href{http://bioconductor.org/}{\Bioconductor{} website} is a great resource to get the latest (frequent) updates and to find help and tutorials.\\
+One of the most notable advantage of \R{} and \Bioconductor{} is the vast amount of learning resources available. In addition to package vignettes (i.e. documentation), the \href{http://bioconductor.org/help/workflows/}{\Bioconductor{} workflows} and \href{http://bioconductor.org/help/course-materials/}{Courses and Conferences section} are great resources.\\
 
 %===================================
 \subsection{Core and specialized packages}
 %===================================
-During the last decade, an enormous amount of work has been done by \Bioconductor{} developpers to provide efficient tools for the analysis of genomic data. A recent paper provides an excellent overview of the use of \Bioconductor{} in the context of genomic data~\cite{pmid25633503}.\\
-Some packages provide a core infrastructure for genomics by defining key containers and the associated accessors. Others provide complete pipelines or integrated solutions for a general task. They allow to perform the main steps involved in the analysis of genomic data:
+During the last decade, an enormous amount of work has been done by \Bioconductor{} developpers to provide efficient tools for the analysis of genomic data (see for example this excellent overview of the use of \Bioconductor{} in the context of genomic data~\cite{pmid25633503}).\\
+Some packages provide a core infrastructure for genomics by defining key classes / containers and the associated accessors. Others provide complete pipelines or integrated solutions for a general task. These packages allow to perform the main steps involved in the analysis of genomic data:
 
 \begin{itemize}
-  \item Manipulate sequences and strings: \Biocpkg{Biostrings}, \Biocpkg{BSgenome} and BSgenome* annotation packages
+  \item Work with sequences and strings: \Biocpkg{Biostrings}, \Biocpkg{BSgenome} and BSgenome* annotation packages
   \item Manipulate raw FASTQ data files: \Biocpkg{ShortRead}
   \item Align reads on a reference: \Biocpkg{Rsubread}, \Biocpkg{QuasR}
   \item Manipulate aligned reads: \Biocpkg{Rsamtools}, \Biocpkg{girafe}, \Biocpkg{GenomicAlignments}
-  \item Manipulate genomic ranges: \Biocpkg{IRanges}, \Biocpkg{GenomicRanges}
-  \item Annotating: AnnotationDbi, \Biocpkg{OrganismDbi}, \Biocpkg{GenomicFeatures}, etc.
+  \item Work with genomic ranges: \Biocpkg{IRanges}, \Biocpkg{GenomicRanges}
+  \item Acess annotations: \Biocpkg{AnnotationDbi}, \Biocpkg{OrganismDbi}, \Biocpkg{GenomicFeatures}, etc.
   \item Importing/exporting tracks: \Biocpkg{rtracklayer}, \Biocpkg{AnnotationHub}, \Biocpkg{biomaRt}, etc.
   \item Visualize genomic data: \Biocpkg{ggbio}, \Biocpkg{Gviz}, \Biocpkg{Sushi}, etc.
 \end{itemize}
 
+\\
+
 Other packages are more focused on specific applications, such as:
 \begin{itemize}
-  \item RNA-seq: \Biocpkg{limma}, \Biocpkg{DESeq2}, \Biocpkg{edgeR}, \Biocpkg{DEXseq}, \Biocpkg{spliceR}, \Biocpkg{rnaSeqMap}, etc.
+  \item RNA-seq and differential analysis: \Biocpkg{limma}, \Biocpkg{DESeq2}, \Biocpkg{edgeR}, \Biocpkg{DEXseq}, \Biocpkg{spliceR}, \Biocpkg{rnaSeqMap}, etc.
   \item ChIP-seq: \Biocpkg{ChIPQC}, \Biocpkg{chipseq}, \Biocpkg{NarrowPeaks}, \Biocpkg{DiffBind}, \Biocpkg{MMDiff}, \Biocpkg{epigenomix}, \Biocpkg{jmosaics}, etc.
   \item DNA methylation: \Biocpkg{bsseq}, \Biocpkg{BiSeq}, \Biocpkg{methylumi}, \Biocpkg{minfi}, \Biocpkg{Rnbeads}, etc.
   \item CAGE-seq: \Biocpkg{TSSi}, \Biocpkg{CAGEr}, etc.
@@ -116,7 +118,7 @@ Other packages are more focused on specific applications, such as:
 \subsection{Content and usage of this document}
 %===================================
 
-In this document, I present an overview of the first category of packages: those that I consider as the core packages to perform functional genomics studies with \Bioconductor{}. The chapters correspond to general tasks often performed in genomic studies and for each tasks the main functions from the core packages are illustrated. R code is easily recognized by the grey background and text outputs are color-coded and preceded by the \#\# symbols. There is a progression in the document and objects created in a chapter are often used in subsequent chapters. It is thus necessary to save your R session when you make a pause in the document:
+This document presents an overview of the packages that I consider as the core packages to perform functional genomics studies with \Bioconductor{}. The chapters correspond to general tasks often performed in genomic studies and for each tasks the main functions from the core packages are illustrated. R code is easily recognized by the grey background and text outputs are color-coded and preceded by the \#\# symbols. There is a progression in the document and objects created in a chapter are often used in subsequent chapters. It is thus necessary to save your R session when you make a pause in the document:
 <<SaveSession,eval=FALSE>>=
 save.image("MySession.RData")
 @
@@ -125,8 +127,8 @@ and to load it back when you start again:
 load("MySession.RData")
 @
 
-This document does not document core packages to perform genetic studies (SNPs, CNVs, GWAS, etc.) because I don't know them. I apologize to the interested reader and refer him to the excellent documentation available online.\\
-I would like to acknowledge the help of Laurent Lacroix for the examples on sequence masks and of Gael Micas for the hours spent coding together with some of the packages presented here. Of course this document is also largely inspired and borrrows a lot from the documents and vignettes written by others. I am grateful to them for sharing their knowledge and skills and I hope this document will help others as much as their documents have helped me.\\
+This document does not document core packages to perform genetic studies (SNPs, CNVs, GWAS, etc.) because I am less familiar with them. This might be a future development of this document.\\
+This document is largely inspired and borrrows a lot from the documents and vignettes written by others. I am grateful to them for sharing their knowledge and skills and I hope this document will help others as much as their documents have helped me.\\
 
 
 %=====================================================================
