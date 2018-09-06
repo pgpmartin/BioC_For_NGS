@@ -1,0 +1,2532 @@
+%\VignetteEngine{knitr::knitr}
+\documentclass{article}
+
+<<style-knitr, eval=TRUE, echo=FALSE, results="asis">>=
+library(knitr)
+library(BiocStyle)
+BiocStyle::latex()
+@
+
+%LateX packages
+\usepackage{float}
+\usepackage{graphicx}
+
+%Title and author:
+\bioctitle[BioC for NGS data analysis]{An introduction to \R{} and \Bioconductor{} for the analysis of high-throughput sequencing data}
+\author{Pascal MARTIN\thanks{\email{Pascal.Martin@inra.fr}}}
+
+\begin{document}
+
+%Title and Table of content
+\maketitle
+\tableofcontents
+\newpage
+
+%load packages silently
+<<required_packages, echo=FALSE, message=FALSE,warning=FALSE>>=
+library(Biostrings)
+library(BSgenome)
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+library(BSgenome.Dmelanogaster.UCSC.dm3.masked)
+library(knitr)
+library(MotifDb,verbose=F)
+library(seqLogo)
+library(motifStack)
+library(IRanges)
+library(GenomicRanges)
+library(GenomicFeatures)
+library(TxDb.Dmelanogaster.UCSC.dm3.ensGene)
+library(ShortRead)
+library(ggplot2)
+library(Rqc)
+library(pasillaBamSubset)
+library(MMDiffBamSubset)
+library(GenomeInfoDb)
+library(Rsamtools)
+library(GenomicAlignments)
+library(AnnotationDbi)
+library(org.Dm.eg.db)
+library(drosophila2.db)
+library(drosophila2probe)
+library(drosophila2cdf)
+library(hom.Dm.inp.db)
+library(GO.db)
+library(rtracklayer)
+library(AnnotationHub)
+library(biomaRt)
+library(SRAdb)
+library(GEOquery)
+library(Gviz)
+#library(Rsubread)
+#library(QuasR)
+#library(ggbio)
+@
+
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+
+%===================================
+\subsection{What is \R{}/\Bioconductor{}?}
+%===================================
+
+If you start reading this document, you probably already know \R{}, a language and environment for statistical computing and graphics. My only suggestion is to frequently visit the \href{http://www.r-project.org/}{\R{} website} to get the latest update and news. More than 6000 packages are available on the Comprehensive R Archive Network (\href{http://cran.r-project.org/mirrors.html}{CRAN}) to extend the functionalities of \R{}. The increasing use of \R{}, especially in the life science community has been recently illustrated~\cite{pmid25557714}. \\
+With more than 2000 packages, \Bioconductor{} is the largest project associated to \R{}. It is dedicated to bioinformatics~\cite{pmid15461798} and proposes 3 types of packages:
+
+\begin{itemize}
+  \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_Software}{Software packages} are classical \R{} packages containing new functions
+  \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_AnnotationData}{Annotation Data packages} contain biological annotations wrapped in convenient \R{} objects
+  \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_ExperimentData}{Experiment Data packages} contain Experimental data
+\end{itemize}
+
+Again, the \href{http://bioconductor.org/}{\Bioconductor{} website} is a great resource to get the latest (frequent) updates and to find help and tutorials.\\
+One of the most notable advantage of \R{} and \Bioconductor{} is the vast amount of learning resources available. In addition to the package vignettes (i.e. documentation), the \href{http://bioconductor.org/help/workflows/}{\Bioconductor{} workflows} and \href{http://bioconductor.org/help/course-materials/}{Courses and Conferences section} are great resources.\\
+
+%===================================
+\subsection{Core and specialized packages}
+%===================================
+During the last decade, an enormous amount of work has been done by \Bioconductor{} developpers to provide efficient tools for the analysis of genomic data. A recent paper provides an excellent overview of the use of \Bioconductor{} in the context of genomic data~\cite{pmid25633503}.\\
+Some packages provide a core infrastructure for genomics by defining key containers and the associated accessors. Others provide complete pipelines or integrated solutions for a general task. They allow to perform the main steps involved in the analysis of genomic data:
+
+\begin{itemize}
+  \item Manipulate sequences and strings: \Biocpkg{Biostrings}, \Biocpkg{BSgenome} and BSgenome* annotation packages
+  \item Manipulate raw FASTQ data files: \Biocpkg{ShortRead}
+  \item Align reads on a reference: \Biocpkg{Rsubread}, \Biocpkg{QuasR}
+  \item Manipulate aligned reads: \Biocpkg{Rsamtools}, \Biocpkg{girafe}, \Biocpkg{GenomicAlignments}
+  \item Manipulate genomic ranges: \Biocpkg{IRanges}, \Biocpkg{GenomicRanges}
+  \item Annotating: AnnotationDbi, \Biocpkg{OrganismDbi}, \Biocpkg{GenomicFeatures}, etc.
+  \item Importing/exporting tracks: \Biocpkg{rtracklayer}, \Biocpkg{AnnotationHub}, \Biocpkg{biomaRt}, etc.
+  \item Visualize genomic data: \Biocpkg{ggbio}, \Biocpkg{Gviz}, \Biocpkg{Sushi}, etc.
+\end{itemize}
+
+Other packages are more focused on specific applications, such as:
+\begin{itemize}
+  \item RNA-seq: \Biocpkg{limma}, \Biocpkg{DESeq2}, \Biocpkg{edgeR}, \Biocpkg{DEXseq}, \Biocpkg{spliceR}, \Biocpkg{rnaSeqMap}, etc.
+  \item ChIP-seq: \Biocpkg{ChIPQC}, \Biocpkg{chipseq}, \Biocpkg{NarrowPeaks}, \Biocpkg{DiffBind}, \Biocpkg{MMDiff}, \Biocpkg{epigenomix}, \Biocpkg{jmosaics}, etc.
+  \item DNA methylation: \Biocpkg{bsseq}, \Biocpkg{BiSeq}, \Biocpkg{methylumi}, \Biocpkg{minfi}, \Biocpkg{Rnbeads}, etc.
+  \item CAGE-seq: \Biocpkg{TSSi}, \Biocpkg{CAGEr}, etc.
+  \item DNAse-seq: \Biocpkg{DNaseR}, etc.
+  \item MNase-seq: \Biocpkg{PING}, etc.
+  \item 3C/4C/Hi-C: \Biocpkg{r3Cseq}, \Biocpkg{FourCSeq}, \Biocpkg{HiTC}, \Biocpkg{GOTHiC}, \Biocpkg{GenomicInterations}, etc.
+\end{itemize}
+
+
+%===================================
+\subsection{Content and usage of this document}
+%===================================
+
+In this document, I present an overview of the first category of packages: those that I consider as the core packages to perform functional genomics studies with \Bioconductor{}. The chapters correspond to general tasks often performed in genomic studies and for each tasks the main functions from the core packages are illustrated. R code is easily recognized by the grey background and text outputs are color-coded and preceded by the \#\# symbols. There is a progression in the document and objects created in a chapter are often used in subsequent chapters. It is thus necessary to save your R session when you make a pause in the document:
+<<SaveSession,eval=FALSE>>=
+save.image("MySession.RData")
+@
+and to load it back when you start again:
+<<LoadSession,,eval=FALSE>>=
+load("MySession.RData")
+@
+
+This document does not document core packages to perform genetic studies (SNPs, CNVs, GWAS, etc.) because I don't know them. I apologize to the interested reader and refer him to the excellent documentation available online.\\
+I would like to acknowledge the help of Laurent Lacroix for the examples on sequence masks and of Gael Micas for the hours spent coding together with some of the packages presented here. Of course this document is also largely inspired and borrrows a lot from the documents and vignettes written by others. I am grateful to them for sharing their knowledge and skills and I hope this document will help others as much as their documents have helped me.\\
+
+
+%=====================================================================
+\section{Manipulating strings and sequences in Bioconductor}
+%=====================================================================
+
+<<Sequence_analysis_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Manipulating strings and sequences in Bioconductor
+##---------------------------------------------------------##
+@
+
+In this section, we will provide examples on the use of the following packages:
+\begin{itemize}
+  \item \Biocpkg{Biostrings}
+  \item \Biocpkg{Rsamtools}
+  \item \Biocpkg{BSgenome}
+  \item \Biocannopkg{BSgenome.Dmelanogaster.UCSC.dm3}
+\end{itemize}
+\medskip  
+
+
+%===================================
+\subsection{Containers and accessors}
+%===================================
+<<SequenceContainers_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Sequence containers and accessors
+##--------- ##
+@
+
+<<Biostring_lib,eval=FALSE,echo=FALSE>>=
+require(Biostrings,warn.conflicts = F)
+@
+
+First, we will see how to import sequences from a \href{http://en.wikipedia.org/wiki/FASTA_format}{fasta} file. We will use a file provided with the \Biocpkg{Biostrings} package which contains the sequences 2000 bases upstream of the annotated transcription start sites (TSS) for the Drosophila melanogaster genome.\medskip
+
+Get the file path:
+<<dm3_upstream_path,cache=TRUE>>=
+dm3_upstream_filepath = system.file("extdata",
+                                    "dm3_upstream2000.fa.gz",
+                                    package="Biostrings")
+@
+Import the sequences as a DNAStringSet:
+<<dm3_upstream,cache=TRUE>>=
+dm3_upstream = readDNAStringSet(dm3_upstream_filepath)
+dm3_upstream
+@
+\medskip
+
+Create a random sequence:
+<<randomseq,cache=TRUE>>=
+randomSeq = DNAString(paste(sample(DNA_ALPHABET[1:4], 
+                                   size=24,
+                                   replace=TRUE), 
+                            collapse=""))
+randomSeq
+@
+\medskip
+
+Load the whole Drosophila genome sequence:
+<<Dmelanogaster,eval=-1,cache=TRUE>>=
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+Dmelanogaster
+names(Dmelanogaster)
+Dmelanogaster$chr2L
+@
+\medskip
+
+Accessors:
+<<Access_dm3_upstream,cache=TRUE>>=
+dm3_upstream[[5]]
+toString(dm3_upstream[[5]][2:30])
+subseq(dm3_upstream[[5]],start=2,end=30)
+Views(dm3_upstream[[5]],start=c(1,11,21),end=c(10,20,30))
+@
+\Rclass{Views} objects are used to store a sequence together with ranges defined on this sequence. The ranges are said to represent \emph{views} onto the sequence (see paragraph~\ref{sub:Views} for details on these objects).
+
+\paragraph{Working with large FASTA files\\}
+The \Biocpkg{Rsamtools} package (presented in paragraph~\ref{sec:SAM_BAM_Files}) also provides interesting functions to work on large indexed FASTA files (e.g. containing a whole genome sequence). The short example below illustrates how to extract from a FASTA file a set of sequences defined by a \Rclass{GRanges} (see paragraph~\ref{subsec:GenomicRanges} for details on \Rclass{GRanges}):
+<<FaFile_getSeq,eval=-1,cache=TRUE>>=
+library(Rsamtools)
+indFaEx_path=system.file("extdata","ce2dict1.fa",package="Rsamtools")
+indFaEx=FaFile(indFaEx_path)
+getSeq(indFaEx,GRanges(seqnames=Rle(c("pattern01","pattern04")),
+                       ranges=IRanges(start=c(3,10),end=c(10,24)),
+                       strand="*"))
+@
+
+
+%===================================
+\subsection{Sequence analysis and masks}
+%===================================
+<<SequenceAnalysisMasks_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Sequence analysis and masks
+##--------- ##
+@
+
+Reverse complement of a sequence (see also the \Rfunction{reverse} and \Rfunction{complement} functions):
+<<revcomp,cache=TRUE>>=
+reverseComplement(dm3_upstream[[5]])
+@
+
+Count the occurence of each base:
+<<alphabetFrequency,cache=TRUE>>=
+alphabetFrequency(dm3_upstream[1:2],baseOnly=TRUE,as.prob=TRUE)
+@
+
+Get the GC content of a sequence:
+<<letterFrequency,cache=TRUE>>=
+letterFrequency(Dmelanogaster$chr2L,"CG",as.prob=TRUE)
+@
+\medskip
+
+Masked versions of BSgenome packages are generally available:
+<<Dmel_genome_masked,eval=FALSE,echo=TRUE>>=
+library("BSgenome.Dmelanogaster.UCSC.dm3.masked")
+@
+
+Activate/deactivate the masks:
+<<Mask_activate,cache=TRUE>>=
+maskedgenome=BSgenome.Dmelanogaster.UCSC.dm3.masked
+chrU=maskedgenome$chrU
+active(masks(chrU))=T #turn on all masks
+chrUmask=injectHardMask(chrU) #Effectively replaces the masked nucleotides by "+"
+as(chrU,"XStringViews") #Get the unmasked regions
+@
+
+Hard masking influences the sequence we extract using \Rfunction{Views} (see paragraph~\ref{sub:Views}), soft masking des not:
+<<Mask_views,cache=TRUE>>=
+toString(Views(Dmelanogaster$chrU,start=1714848, width=12))
+toString(Views(chrU,start=1714848, width=12))
+toString(Views(chrUmask,start=1714848, width=12))
+@
+
+
+Masks influence the results from the \Rfunction{matchPattern} function (see paragraph~\ref{sub:PatternMatch_SeqAlign} for details on this function):
+<<Mask_matchPattern,cache=TRUE>>=
+length(matchPattern('GAGAGAGAGAGA',maskedgenome$chrU))
+length(matchPattern('GAGAGAGAGAGA',chrU))
+length(matchPattern('GAGAGAGAGAGA',chrUmask))
+
+active(masks(chrU))=F #deactivate all masks
+length(matchPattern('GAGAGAGAGAGA',chrU))
+
+active(masks(chrU))['RM']=T #activate only RepeatMasker
+length(matchPattern('GAGAGAGAGAGA',chrU))
+@
+
+%===================================
+\subsection{Pattern matching and sequence alignment} \label{sub:PatternMatch_SeqAlign}
+%===================================
+<<PatternMatching_Alignment_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Pattern matching and sequence alignment
+##--------- ##
+@
+
+A number of bioinformatic pipelines heavily rely on sequence alignment and pattern matching. The alignment of NGS reads is often performed outside \R{}, using an NGS aligner such as \href{http://bio-bwa.sourceforge.net/}{BWA}~\cite{pmid20080505,pmid19451168}, \href{http://bowtie-bio.sourceforge.net/index.shtml}{Bowtie}/\href{http://bowtie-bio.sourceforge.net/bowtie2/index.shtml}{Bowtie2}~\cite{pmid19261174,pmid22388286} or a spliced read aligner such as \href{http://ccb.jhu.edu/software/tophat/index.shtml}{TopHat/TopHat2}~\cite{pmid19289445,pmid23618408} or \href{https://github.com/alexdobin/STAR}{STAR}~\cite{pmid23104886}. However, sequence alignment in \R{} can be used for example to refine reads pre-processing by searching for adapters and primers contaminations. Pattern matching is typically used in ChIP-seq experiment and in the analysis of transcription factor binding.\\
+
+%==============
+\subsubsection{Pattern matching}
+%==============
+\href{http://en.wikipedia.org/wiki/Sequence_motif}{Sequence motifs} are typically used to represent the DNA regions bound by transcription factors and other regulatory proteins. There are several packages in \Bioconductor{} to search for and identify such patterns in strings and sequences. A complete \href{http://bioconductor.org/help/workflows/generegulation/}{\Bioconductor{} workflow} illustrates the use of pattern matching for the identification of transcription factor binding sites.\\
+Here, we will use the following additional packages:
+\begin{itemize}
+  \item \Biocpkg{MotifDb}
+  \item \Biocpkg{seqLogo}
+  \item \Biocpkg{motifStack}
+\end{itemize}
+Other packages of interest include \Biocpkg{TFBSTools}, \Biocpkg{MotIV}, \Biocpkg{BCRANK}, \Biocpkg{motifRG} and \Biocpkg{rGADEM}.
+\medskip
+
+\fixme{add a section on TFBSTools which has improved a lot in last version. Mention also motifbreakR PMID 26272984 for the impact of a SNP on a TF binding site}
+
+\paragraph{Searching and plotting motifs.\\}
+The \Biocpkg{MotifDb} package allows to query databases containg DNA motifs.
+<<MotifDb_lib,eval=TRUE,echo=FALSE>>=
+require(MotifDb)
+@
+
+Here, we search these databases for the response element of the ecdysone receptor (EcR):
+<<EcRmotif_query,cache=TRUE>>=
+EcRMotifs=MotifDb::query(MotifDb,"EcR")
+EcRMotifs
+EcRMotifs[[1]]
+@
+The motif is represented as a \href{http://en.wikipedia.org/wiki/Position_weight_matrix}{Position-weight matrix}
+\medskip
+
+The package \Biocpkg{seqLogo} allows to easily plot \href{http://en.wikipedia.org/wiki/Sequence_logo}{sequence logos}:
+<<seqLogo_lib,eval=FALSE,echo=FALSE>>=
+require(seqLogo,warn.conflicts = F, quietly = T)
+@
+Figure~\ref{fig:SeqLogo_Ecr} shows EcR motif:
+<<SeqLogo_Ecr,fig.cap="Sequence logo for EcR motif",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
+seqLogo(EcRMotifs[[1]])
+@
+Figure~\ref{fig:SeqLogo_Ecr_revcomp} its reverse complement:
+<<SeqLogo_Ecr_revcomp,fig.cap="Sequence logo for EcR motif reverse complement",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
+seqLogo(reverseComplement(EcRMotifs[[1]]))
+@
+And Figure~\ref{fig:SeqLogo_EcrUsp} the logo for the response element obtained from \href{http://jaspar.genereg.net/}{JASPAR}:
+<<SeqLogo_EcrUsp,fig.cap="Sequence logo for EcR:Usp heterodimer",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.6\\textwidth">>=
+seqLogo(EcRMotifs[[2]])
+@
+\medskip
+The second motif (from \href{http://jaspar.genereg.net/}{JASPAR}) represented in Figure \ref{fig:SeqLogo_EcrUsp} is a binding site for the heterodimer composed of the ecdysone receptor (EcR) and its binding partner Ultraspiracle protein (Usp). This imperfect palindromic ecdysone response element is an inverted repeat of the consensus motif AGGTCA separated by 1 nucleotide (IR1).
+\medskip
+
+The package \Biocpkg{motifStack} provides additional plotting functionalities for sequence logos as shown in Figure~\ref{fig:motifStack_Ecr}:
+<<motifStack_Ecr,fig.cap="Sequence logos for EcR motifs using motifStack",fig.align="center",fig.width=6, fig.height=6,fig.pos="!h",out.width="0.6\\textwidth">>=
+par(mfrow=c(2,1))
+plot(new("pcm",
+         as.matrix(reverseComplement(EcRMotifs[[1]])),
+         name="EcR_FlyFactorSurvey"))
+plot(new("pcm",
+         as.matrix(reverseComplement(EcRMotifs[[2]])),
+         name="EcR_JASPAR"))
+@
+\medskip
+
+\paragraph{Scanning a sequence with a Position-weight matrix.\\}
+We select the JASPAR motif:
+<<EcrJASP,cache=TRUE>>=
+EcrJASP=EcRMotifs[[grep("JASPAR_2014",names(EcRMotifs))]]
+@
+ 
+And search for this motif on both strands of chromosome 2L:
+<<warnOFF,eval=TRUE,echo=FALSE>>=
+options(warn=-1)
+@
+<<matchPWM_EcR_on2L,cache=TRUE>>=
+EcRJASP_2L=matchPWM(EcrJASP,
+                    Dmelanogaster$chr2L,
+                    min.score='85%')
+EcRJASP_2L_rev=matchPWM(reverseComplement(EcrJASP),
+                        Dmelanogaster$chr2L,
+                        min.score='85%')
+EcRJASP_2L_all=Views(Dmelanogaster$chr2L,
+                     union(ranges(EcRJASP_2L),
+                           ranges(EcRJASP_2L_rev)))
+EcRJASP_2L_all
+@
+<<warnON,eval=TRUE,echo=FALSE>>=
+options(warn=0)
+@
+\medskip
+
+\fixme{mention that matchPWM also works on a BSgenome. It returns a GRanges of motif positions and scans the motif itself and ots reverse complement}
+
+\paragraph{Scanning a sequence with one string.\\}
+
+A pattern can also be represented as a character string possibly using the \href{http://www.bioinformatics.org/sms/iupac.html}{IUPAC ambiguity code}. Here, for simplicity, we will represent ambiguities as 'N'.\\
+
+To perform pattern matching, we define a consensus sequence for the IR1 ecdysone response element:
+<<EcR_IR1_cons,cache=TRUE>>=
+EcR_IR1_cons=consensusString(EcrJASP,ambiguityMap="N")
+EcR_IR1_cons
+EcR_IR1_cons=substring(EcR_IR1_cons,first=2)
+EcR_IR1_cons
+@
+Similarly, we can build consensus sequences for the EcR itself:
+%and for its binding partner Ultraspiracle (Usp)
+%Usp_cons=substring(consensusString(query(MotifDb,"Usp")[[5]],ambiguityMap="N"),first=1,last=7)
+<<EcR_Usp_cons,cache=TRUE>>=
+EcR_cons=substring(consensusString(reverseComplement(EcRMotifs[[1]]),
+                                   ambiguityMap="N"),
+                   first=2)
+Usp_cons=substring(consensusString(MotifDb::query(MotifDb,"Usp")[[5]],
+                                   ambiguityMap="N"),
+                   first=1,
+                   last=7)
+@
+
+Now, we search for the EcR consensus in chromosome 2L:
+<<matchPattern_EcR_on2L,cache=TRUE>>=
+EcR_on_2L=matchPattern(EcR_cons,Dmelanogaster$chr2L)
+EcR_on_2L_rev=matchPattern(reverseComplement(DNAString(EcR_cons)),
+                           Dmelanogaster$chr2L)
+EcR_on_2L_all=Views(Dmelanogaster$chr2L,union(ranges(EcR_on_2L),
+                                              ranges(EcR_on_2L_rev)))
+@
+Note that we have found a perfect palindrome: 
+<<Perfect_palindrome_on2L,cache=TRUE>>=
+EcR_on_2L_all[width(EcR_on_2L_all)!=7]
+@
+
+\medskip
+\paragraph{Scanning multiple sequences with one string.\\}
+
+It is also possible to search for a single pattern in several subject sequences using the \Rfunction{vmatchPattern}.\\
+Search for the EcR pattern in TSS upstream sequences: 
+<<vmatchPattern_EcR_dmUp,cache=TRUE>>=
+EcR_on_up=vmatchPattern(EcR_cons, dm3_upstream)
+@
+
+Get the number of matches per subject element:
+<<nmatch_per_seq,cache=TRUE>>=
+nmatch_per_seq = elementNROWS(EcR_on_up)
+table(nmatch_per_seq)
+@
+
+Let's take look at one of the upstream sequence with the maximum number of matches:
+<<max_matches,cache=TRUE>>=
+i0=which.max(nmatch_per_seq)
+Views(dm3_upstream[[i0]], EcR_on_up[[i0]])
+@
+\medskip
+
+\paragraph{Scanning a sequence with multiple strings.\\}
+
+One may also search for multiple patterns in a single subject sequence using \Rfunction{matchPDict}.\\
+Get all PWM matrices available for Drosophila melanogaster:
+<<dm_matrices,cache=TRUE>>=
+dm_matrices = MotifDb::query(MotifDb,"dmelanogaster")
+@
+
+Keep only the motifs that are 8bp-long and get their consensus sequences:
+<<dm_motifs,cache=TRUE>>=
+motif_ln = sapply(dm_matrices,ncol)
+dm_matrices = dm_matrices[motif_ln==8]
+dm_motifs=DNAStringSet(sapply(dm_matrices,consensusString,ambiguityMap="N"))
+@
+
+Search for all these motifs in chromosome 2L:
+<<matchPDict_on2L,cache=TRUE>>=
+mot8_on_2L=matchPDict(dm_motifs,Dmelanogaster$chr2L,fixed=FALSE)
+summary(elementNROWS(mot8_on_2L)) #Number of matches
+head(unlist(mot8_on_2L)) #first 6 matches
+@
+
+The motif most frequently found on chromosome 2L:
+<<Frequent_motif,cache=TRUE>>=
+names(dm_motifs[which.max(elementNROWS(mot8_on_2L))])
+toString(dm_motifs[[which.max(elementNROWS(mot8_on_2L))]])
+@
+
+The motif less frequently found on chromosome 2L:
+<<Rare_motif,cache=TRUE>>=
+names(dm_motifs[which.min(elementNROWS(mot8_on_2L))])
+toString(dm_motifs[[which.min(elementNROWS(mot8_on_2L))]])
+@
+\medskip
+
+\paragraph{Scanning multiple sequence with multiple strings.\\}
+Finally, some functions, still under development, are available to search for multiple patterns in multiple sequences.\\
+
+Remove the motifs containing N bases and create a dictionary of motifs (the motifs must have the same length):
+<<dm_mot8_dict,cache=TRUE>>=
+dm_mot8_dict=PDict(dm_motifs[sapply(dm_motifs,hasOnlyBaseLetters)])
+@
+Search for the motifs in TSS upstream sequences:
+<<vcountPDict,cache=TRUE>>=
+mot8_count_upstream=vcountPDict(dm_mot8_dict,dm3_upstream)
+@
+Number of motifs found:
+<<Number_of_motifs_found,cache=TRUE>>=
+apply(mot8_count_upstream,1,sum)
+@
+Number of motif1 per upstream sequence:
+<<Number_of_motif1_per_seq,cache=TRUE>>=
+table(mot8_count_upstream[1,])
+@
+Number of motifs per upstream sequence:
+<<nMot8_perUpSeq,cache=TRUE>>=
+nMot8_perSeq=apply(mot8_count_upstream,2,sum)
+names(nMot8_perSeq)=names(dm3_upstream)
+@
+
+Plot in Figure \ref{fig:fig_Mot8PerUpSeq} the number of upstream sequences as a function of the number of motifs:
+<<fig_Mot8PerUpSeq,fig.align="center",fig.width=5, fig.height=5,fig.cap='Motifs per upstream sequence.',fig.pos="!h",out.width="0.6\\textwidth">>=
+nMot8_perSeq=nMot8_perSeq[nMot8_perSeq>=1]
+plot(as.integer(names(table(nMot8_perSeq))),
+  	as.integer(table(nMot8_perSeq)),
+		pch=15,type="b",log="y",col="blue",
+		xlab="Number of 8bp-long motifs",
+		ylab="Number of upstream sequences")
+@
+\medskip
+
+%==============
+\subsubsection{Sequence alignment}
+%==============
+The functions briefly presented here are not dedicated to the alignment of NGS reads but represent the main functions available in \Bioconductor{} to perform sequence alignment. These functions are well documented (including some examples on NGS data) in the vignettes of the \Biocpkg{Biostrings} package. 
+
+\paragraph{Pairwise alignment.\\}
+The main function \Rfunction{pairwiseAlignment} provides functionalities to perform global (\href{http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm}{Needleman–Wunsch}), local (\href{http://en.wikipedia.org/wiki/Smith-Waterman_algorithm}{Smith-Waterman}) and overlap (ends-free) pairwise alignments while tuning \emph{substitution scoring} and \emph{gap penalties}.\\
+Align the consensus ecdysone receptor response element to a region of chromosome 2L were such a motif is present:
+<<pairwiseAlignment_ex1,cache=TRUE>>=
+pairwiseAlignment(EcR_IR1_cons,
+                  Dmelanogaster$chr2L[14067:14101],
+                  type='global-local')
+@
+
+Align the consensus motifs for EcR and Usp on a TSS upstream sequence:
+<<pairwiseAlignment_ex2,cache=TRUE>>=
+paln_EcRUsp=pairwiseAlignment(c(EcR_cons,Usp_cons),
+                              dm3_upstream[[1780]],
+                              type='global-local')
+paln_EcRUsp[1]
+paln_EcRUsp[2]
+Views(paln_EcRUsp)
+Views(dm3_upstream[[1780]],start=772,end=785)
+@
+
+Global vs local alignment:
+<<pairwiseAlignment_ex3,cache=TRUE>>=
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTT',
+                  type='global')
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTT',
+                  type='local')
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTT',
+                  type='global-local')
+@
+
+Playing with gap penalties:
+<<pairwiseAlignment_ex4,cache=TRUE>>=
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+                  type='global')
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+                  gapExtension=-6,type='global')
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+                  gapOpening=-60,type='global')
+@
+
+Accessors and methods:
+<<pairwiseAlignment_utilsAndAccess,cache=TRUE>>=
+paln=pairwiseAlignment(DNAStringSet(c('GTGTCAATACGACAGCAATCTG','TAAGGTCATAGTGT')),
+                       DNAString('TCGCCATAGGTCAATAGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG'),
+                       type='global-local')
+pattern(paln)
+subject(paln)
+aligned(paln)
+Biostrings::score(paln)
+pid(paln) # percentage identity
+compareStrings(paln)
+nedit(paln) #Levenshtein edit distance
+insertion(paln) 
+Views(paln)
+coverage(paln)
+@
+See the 'pairwise alignment' vignette of \Biocpkg{Biostrings} for other utilities and accessors.
+
+Using substitution matrices based on evolutionary models (other matrices are available):
+<<pairwiseAlignment_protein,cache=TRUE>>=
+data(BLOSUM62)
+pairwiseAlignment(AAString("ALAKHLYDSYIKSFPLTKAKARAILTGKTTDKS"),
+  				AAString("AQQFNDIVCAMTQEDLEKFWKRCSRPFTAHM"),
+					substitutionMatrix = BLOSUM62)
+@
+
+\paragraph{Multiple alignment.\\}
+Several tools and algorithms are available to perform multiple sequence alignments (e.g.\ \href{http://multalin.toulouse.inra.fr/multalin/}{Multalin}, \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.ebi.ac.uk/Tools/msa/tcoffee/}{T-Coffee} or \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}). \Biocpkg{Biostrings} essentially allows to import and explore the resulting alignments. Examples are provided in the vignette of \Biocpkg{Biostrings} and \href{http://manuals.bioinformatics.ucr.edu/home/ht-seq#TOC-Multiple-Sequence-Alignments-MSAs-}{here}.
+
+\fixme{mention the msa BioC package, PMID 26315911}
+
+
+%=====================================================================
+\section{Manipulating genomic ranges}
+%=====================================================================
+<<GRanges_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Manipulating genomic ranges
+##---------------------------------------------------------##
+@
+So far, we have essentially manipulated sequence data. However, we have already noticed that start-end coordinates along a sequence are also useful in some situations. These start-end coordinates define a range onto the sequence. As underlined by \href{http://master.bioconductor.org/help/course-materials/2014/SeattleFeb2014/Ranges_slides.pdf}{Martin Morgan}: 1) ranges allow to represent a wide array of genomic data and annotations and 2) several biological questions reflect range-based queries. \Bioconductor{} implements a number of tools to manipulate and analyze ranges and specifically genomic ranges~\cite{pmid23950696}.\\
+In this section, we will mainly use the following 2 packages:
+\begin{itemize}
+  \item \Biocpkg{IRanges}
+  \item \Biocpkg{GenomicRanges}
+\end{itemize}
+\medskip
+We will also present the packages providing annotations as genomic ranges.
+
+%===================================
+\subsection{IRanges and accessors}
+%===================================
+<<IRangesIntro_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## IRanges and accessors
+##--------- ##
+@
+
+<<IRanges_lib,eval=FALSE,echo=FALSE>>=
+require(IRanges,warn.conflicts = F, quietly = T)
+@
+\paragraph{Definition.\\}
+An \Rclass{IRanges} object is defined as follow:
+\begin{itemize}
+  \item defined by 2 vectors out of start, end, width (SEW ; $end = start + width - 1$)
+  \item closed intervals (i.e.\ include end points)
+  \item zero-width convention: $width \geq 0$ ; $end=start-1 \Leftrightarrow width=0$
+  \item can be named
+\end{itemize}
+
+A simple IRanges:
+<<simple_IRanges,cache=TRUE>>=
+eg = IRanges(start = c(1, 10, 20),
+              end = c(4, 10, 19),
+              names = c("A", "B", "C"))
+eg
+@
+A bigger IRanges:
+<<bigger_IRanges,cache=TRUE>>=
+set.seed(123) #For reproducibility
+start = floor(runif(10000, 1, 1000))
+end = start + floor(runif(10000, 0, 100))
+ir = IRanges(start, end)
+ir
+@
+\medskip
+
+\paragraph{Accessors and methods.\\}
+\Rclass{IRanges} accessors:
+<<IRanges_accessors,cache=TRUE>>=
+length(ir)
+ir[1:4]
+start(ir[1:4])
+width(ir[1:4])
+names(eg)
+@
+\medskip
+
+Other useful methods for \Rclass{IRanges}
+<<IRanges_otherMethods,cache=TRUE>>=
+c(ir[1:2],ir[5:6]) #combining
+sort(ir[1:4])
+rank(ir[1:4],ties="first")
+mid(ir[1:4]) # midpoints
+tile(ir[1:2],n=2) #returns an IRangesList (see below)
+ir[[1]]
+as.integer(ir[1]) #equivalent but works on multiple ranges
+unlist(ir[1]) #also equivalent but names can be added
+rep(ir[1:2],each=2)
+isNormal(ir[1:4])
+isNormal(sort(ir[1:4])) #see ?'Ranges-class' for Normality definition
+isDisjoint(ir[1:4])
+match(ir[1:4],ir[4:1]) #see ?'Ranges-comparison' for Ranges comparison methods
+ir[1:4]>ir[4:1]
+@
+
+Other methods creating IRanges:
+<<otherIRanges_functions,cache=TRUE>>=
+as(c(2:10,8,90:100),"IRanges") #from a vector of integers
+successiveIRanges(width=rep(10,5),gap=10)
+whichAsIRanges(c(19, 5, 0, 8, 5)>=5) #transforms a logical vector in IRanges
+@
+
+\paragraph{IRangesList.\\}
+It can be convenient to group ranges in a list (e.g.\ exons grouped by genes). \Rclass{IRangesList} objects serve this purpose. Accessors and functions for \Rclass{IRanges} generally work on \Rclass{IRangesList} objects.
+<<IRangesList,cache=TRUE>>=
+irl=split(ir,width(ir)) # an IRangesList
+irl[[1]]
+start(irl)
+head(elementNROWS(irl))
+@
+\medskip
+
+%===================================
+\subsection{Intra-and inter-range operations}
+%===================================
+<<IntraInterRange_ops_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Intra-and inter-range operations
+##--------- ##
+@
+
+\subsubsection{Intra-range operations}
+\label{subsubsec:IRanges_intraops}
+These operations apply on each range of an \Rclass{IRanges} object:
+<<intra-range_ops,cache=TRUE>>=
+ir[1:2]
+shift(ir[1:2],shift=10)
+resize(ir[1:2],width=100,fix="start")
+flank(ir[1:2],width=100,start=T)
+narrow(ir[1:2],start=1,width=30) #here 'start' is relative
+ir[1:2]+10
+ir[1:2]-10
+ir[1:2]+c(0,10)
+ir[1:4]*-10 ; ir[1:4]*10 # acts like a centered zoom
+ir[1:2]*c(1,2) #zoom second range by 2X
+@
+See \Rcode{help('intra-range-methods',package="IRanges")} for other methods
+\medskip
+
+\subsubsection{Inter-range operations}
+\label{subsubsec:IRanges_interops}
+Function to plot ranges (adapted from the \Biocpkg{IRanges} vignette):
+<<plotRanges_function,cache=TRUE>>=
+plotRanges <- function(x, xlim = x, main = deparse(substitute(x)),
+                       col = "black", sep = 0.5, cextitle=1, cexaxis=1, xaxis=T,...) 
+{
+  height <- 1
+  if (is(xlim, "Ranges"))
+    xlim <- c(min(start(xlim)), max(end(xlim)))
+  bins <- disjointBins(IRanges(start(x), end(x) + 1))
+  plot.new()
+  plot.window(xlim, c(0, max(bins)*(height + sep)))
+  ybottom <- bins * (sep + height) - height
+  rect(start(x)-0.5, ybottom, end(x)+0.5, ybottom + height, col = col, ...)
+  if (xaxis)
+    (axis(1,cex.axis=cexaxis,padj=1))
+  title(main,cex.main=cextitle)
+}
+@
+\medskip
+
+These inter-range operations, called \emph{endomorphisms}, apply on a set of ranges and return a set of ranges:
+<<inter-ranges_ops,cache=TRUE>>=
+irs=ir[which(start(ir)<=100 & end(ir)<=100)[c(3:4,8,14,17:18)]] #select some ranges in [1:100]
+irs
+reduce(irs)
+disjoin(irs)
+gaps(irs)
+coverage(irs)
+@
+See \Rcode{help('inter-range-methods',package="IRanges")} for other methods.\\
+
+They are illustrated in Figure~\ref{fig:fig_inter-range_ops} using:
+<<fig_inter-range_ops,fig.align="center",fig.width=4, fig.height=8,fig.cap='Inter-range operations.',fig.pos="!h",out.width="5in",out.height="7in">>=
+par(mfrow=c(5,1))
+plotRanges(irs,xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(reduce(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(disjoin(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(gaps(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plot(1:100,c(coverage(irs),rep(0,4)),type="l",axes=F,xlab="",ylab="",lwd=3)
+title(main="coverage",cex.main=2)
+axis(side=2,lwd=2,cex.axis=2,at=0:3,labels=0:3)
+axis(1,lwd=2,cex.axis=2,padj=1)
+@
+\medskip
+
+\subsubsection{Set operations}
+\label{subsubsec:IRanges_setops}
+See \Rcode{help('setops-methods',package="IRanges")} for details.
+The \Rfunction{union} and \Rfunction{intersect} functions for \Rclass{IRanges}:
+<<setops_IRanges_unionintersect,cache=TRUE>>=
+union(irs[1:3],irs[4:6])
+intersect(irs[1:3],irs[4:6])
+@
+
+Illustrated in Figure~\ref{fig:fig_IRanges_setops_unionintersect}:
+<<fig_IRanges_setops_unionintersect,fig.align="center",fig.width=4, fig.height=8, fig.cap='Union and intersect on IRanges.',fig.pos="!h",out.width="5in",out.height="5in">>=
+par(mfrow=c(4,1))
+ plotRanges(irs[1:3],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(irs[4:6],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(union(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(intersect(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+@
+\medskip
+
+The \Rfunction{setdiff} function for asymmetric differences:
+<<setops_IRanges_setdiff,cache=TRUE>>=
+setdiff(irs[1:3],irs[4:6])
+setdiff(irs[4:6],irs[1:3])
+@
+
+Illustrated in Figure~\ref{fig:fig_IRanges_setops_setdiff}:
+<<fig_IRanges_setops_setdiff,fig.align="center",fig.width=4, fig.height=8, fig.cap='Asymetric differences with setdiff on IRanges.',fig.pos="!h",out.width="5in",out.height="5in">>=
+par(mfrow=c(4,1))
+ plotRanges(irs[1:3],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(irs[4:6],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(setdiff(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(setdiff(irs[4:6],irs[1:3]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+@
+\medskip
+
+The same functions can be applied in a parallel fashion (i.e. on the first elements of the provided IRanges, then on the second elements, etc.)
+<<setops_IRanges_paralell,cache=TRUE>>=
+punion(irs[1:2],irs[4:5]) #element-wise (aka "parallel") union
+pintersect(irs[1:2],irs[4:5])
+psetdiff(irs[1:3],irs[4:6]) # asymmetric! difference
+pgap(irs[1:3],irs[4:6])
+@
+\medskip
+
+
+\subsubsection{Nearest methods}
+\label{subsubsec:IRanges_nearest}
+See \Rcode{help('nearest-methods',package="IRanges")} for details and examples:
+<<nearest_IRanges,cache=TRUE>>=
+nearest(irs[4:6],irs[1:3])
+distance(irs[4:6],irs[1:3])
+@
+Other examples are provided in paragraph~\ref{subsubsec:GRanges_methods}
+\medskip
+
+\paragraph{Between ranges operations.\\}
+These are mainly methods to find overlaps between ranges. These functions are examplified below in paragraph~\ref{subsubsec:GRanges_overlap}. See \Rcode{help('findOverlaps-methods',package="IRanges")} for details.\\
+\medskip
+
+%===================================
+\subsection{Rle}
+%===================================
+<<Rle_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Rle
+##--------- ##
+@
+
+\href{http://en.wikipedia.org/wiki/Run-length_encoding}{Run-length encoding} is a data compression method highly adapted to long vectors containing repeated values (e.g.\ coverage on a whole chromosome). For example, the sequence $\{1,1,1,2,3,3\}$ can be represented as $values=\{1,2,3\}$ and the paired $run lengths=\{3,1,2\}$. In \Biocpkg{IRanges}, the \Rclass{Rle} class is used to represent run-length encoded (compressed) atomic vectors.\\
+\medskip
+
+\Rclass{Rle} objects:
+<<Rle_objects,cache=TRUE>>=
+set.seed(123)
+lambda = c(rep(0.001, 3500), seq(0.001, 10, length = 500), #From IRanges vignette
+            seq(10, 0.001, length = 500))
+xRle=Rle(rpois(1e4,lambda))
+yRle=Rle(rpois(1e4, lambda[c(251:length(lambda), 1:250)]))
+xRle
+yRle
+as.vector(object.size(xRle)/object.size(as.vector(xRle))) #Gain of memory
+head(runValue(xRle))
+head(runLength(xRle))
+head(start(xRle)) #starts of the runs
+head(end(xRle)) #ends of the runs
+nrun(xRle) #number of runs
+findRun(as.integer(c(100,200,300,1200)),xRle)
+coverage(irs)
+@
+\medskip
+
+These objects support a number of basic methods associated with R atomic vectors:
+<<Rle_operations,cache=TRUE>>=
+xRle+yRle
+xRle>0
+xRle>yRle
+max(xRle)
+summary(xRle)
+sqrt(xRle)
+rev(xRle)
+table(xRle)
+union(xRle,yRle)
+cor(xRle,yRle)
+@
+See \Rcode{?'Rle-class'} and \Rcode{?'Rle-utils'} for other methods.\\
+\medskip
+
+There are useful functions to perform fixed-width running window summaries:
+<<Rle_runningWindow,cache=TRUE>>=
+runmean(xRle,k=100) # See ?'Rle-runstat' for other examples
+#same result, more flexible but much slower:
+Rle(aggregate(xRle, start = 1:(length(xRle)-99), width = 100, FUN = mean))
+runq(xRle,k=100,i=10) #10th smallest value in windows of 100
+@
+\medskip
+
+One typical application of \Rclass{Rle} objects is to store the coverage of NGS reads along a chromosome. The coverage for all chromosomes can be stored in an \Rclass{RleList} (see \Rcode{?AtomicList} for details) on which most functions defined for \Rclass{Rle} objects would also work.\\ 
+
+Practically, any variable defined along a genome can be represented as
+\begin{itemize}
+\item an \Rclass{RleList} with one \Rclass{Rle} for each chromosome
+\item the mcols (metadata columns) of a \Rclass{GRanges} object (see~\ref{subsec:GenomicRanges} below)
+\end{itemize}
+
+Sometimes, it is desirable to manipulate several of these variables in the same object (e.g. for plotting with \Biocpkg{Gviz}). The \Rcode{?genomicvars} help page provides usefull functions such as \Rfunction{bindAsGRanges} and \Rfunction{mcolAsRleList} to go from one representation to the other.
+
+\medskip
+
+
+%===================================
+\subsection{Views} \label{sub:Views}
+%===================================
+<<Views_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Views
+##--------- ##
+@
+
+As already mentioned, \Rclass{Views} objects are used to store a sequence (a \Rclass{Vector} object called the "subject") together with a set of ranges which define \emph{views} onto the sequence. Specific subclasses exist for different classes of "subject" Vectors, such as \Rclass{RleViews} from the \Biocpkg{IRanges} package and \Rclass{XStringViews} from the \Biocpkg{Biostrings} package.\\
+\medskip
+
+An \Rclass{RleViews} object stores an \Rclass{Rle} subject and its \emph{views}: 
+<<RleViews_create,cache=TRUE>>=
+coverage(irs)
+irs_views=Views(coverage(irs),start=c(-5,10,20,90),end=c(10,30,50,100))
+irs_views #Views can be out of bound
+try(irs_views[[1]]) #but can't be extracted
+irs_views[[2]]
+start(irs_views)
+@
+See\Rcode{?'RleViews-class'} for details.
+\medskip
+
+Other ways to create Views: 
+<<RleViews_create2,cache=TRUE>>=
+Views(coverage(irs),irs[c(1,2,6)]) #use an IRanges to extract Views
+Views(coverage(irs),coverage(irs)>=1) #or a logical Rle
+slice(coverage(irs),3) #use slice
+successiveViews(coverage(irs),width=rep(20,4)) #get successive Views
+@
+\medskip
+
+\Rclass{XStringViews} is used to store \emph{views} on an \Rclass{XString} object: 
+<<XStringViews,cache=TRUE>>=
+dmup_views=Views(dm3_upstream[[1]],irs[1:2])
+dmup_views
+nchar(dmup_views)
+toString(dmup_views) #see ?'XStringViews-class' for other methods
+@
+\medskip
+
+Furthermore there is a \Rclass{ViewsList} virtual class. Its specialized subclass \Rclass{RleViewsList} is useful to store coverage vectors along with their specific \emph{views} over a set of chromosomes. 
+<<RleViewsList,cache=TRUE>>=
+xyRleList=RleList(xRle,yRle)
+xyRleList_views=Views(xyRleList,
+                      IRangesList(IRanges(start=c(3700,4000),width=20),
+                                  IRanges(yRle>17)+2))
+xyRleList_views[[1]]
+xyRleList_views[[2]]
+width(xyRleList_views)
+@
+\medskip
+
+Specific functions are provided for fast looping over \Rclass{Views} and \Rclass{ViewsList} objects:
+<<Views_looping,cache=TRUE>>=
+viewMins(irs_views) #same as min(irs_views)
+viewSums(irs_views) #same as sum(irs_views)
+viewWhichMaxs(irs_views) #get the (first) coordinate of viewMaxs (which.max also works)
+viewRangeMins(irs_views) #get the (first) range of viewMins
+viewApply(irs_views,sd)
+viewMeans(xyRleList_views)
+@
+Note that the \Rfunction{min},\Rfunction{max},\Rfunction{sum},\Rfunction{mean},\Rfunction{which.min} and \Rfunction{which.max} functions now work on \Rclass{Views} (but not on \Rclass{RleViewsList} yet). The corresponding \emph{view*} functions might be deprecated in the future. See \Rcode{?'view-summarization-methods'} for details.\\
+
+%\pagebreak
+
+%===================================
+\subsection{GenomicRanges}
+%===================================
+\label{subsec:GenomicRanges}
+
+<<GenomicRanges_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## GenomicRanges
+##--------- ##
+@
+
+<<GenomicRanges_lib,eval=FALSE,echo=FALSE>>=
+require(GenomicRanges,warn.conflicts = F, quietly = T)
+@
+
+\subsubsection{GRanges objects}
+\label{subsubsec:GRanges_objects}
+Here, we will present some of the classes and functions defined in the \Biocpkg{GenomicRanges} package. This package is central to most \Bioconductor{} users who analyze NGS data, so you should consider reading thoroughly the excellent vignettes associated with this package.\\
+\medskip
+The main class defined in \Biocpkg{GenomicRanges} is the \Rclass{GRanges} class which acts as a container for genomic locations and their associated annotations (see \Rcode{?GRanges}).\\
+\medskip
+\Rclass{GRanges} (and \Rclass{GRangesList}) build on \Rclass{IRanges} (and \Rclass{IRangesList} respectively) with the following specificities:
+
+\begin{itemize}
+  \item The informations on \Rfunction{seqnames} (typically chromosomes) and \Rfunction{strand} is stored along with the information on ranges (SEW)
+  \item An optional \Rfunction{seqinfo} slot contains information on the sequences: names, length (\Rfunction{seqlengths}), circularity and genome
+  \item Optional \emph{metadata} columns (\Rfunction{mcols}) containing additional informations on each range (e.g.\ score, GC content, etc.) which are stored as a \Rclass{DataFrame}
+\end{itemize}
+\medskip
+
+By convention, in \Bioconductor{} genomic coordinates:
+\begin{itemize}
+  \item are \href{https://www.biostars.org/p/84686/}{1-based}
+  \item are \emph{left-most}, i.e.\ 'start' of ranges on the minus strand are the left-most coordinate, rather than the 5' coordinate
+  \item represent closed intervals, i.e.\ the intervals contain start and end coordinates
+\end{itemize}
+\medskip
+
+The \Rfunction{GRanges} function can be used to create a \Rclass{GRanges} object:
+<<GRanges_create,cache=TRUE>>=
+genes = GRanges(seqnames=c("chr2L", "chrX"),
+                ranges=IRanges(start=c(7529, 18962306),
+                               end =c(9484, 18962925),
+                               names=c("FBgn0031208", "FBgn0085359")),
+                strand=c("+", "-"),
+                seqlengths=c(chr2L=23011544L, chrX=22422827L))
+
+slotNames(genes)
+
+mcols(genes) = DataFrame(EntrezId=c("33155", "2768869"),
+                         Symbol=c("CG11023", "CG34330"))
+genome(genes)="dm3" #see ?seqinfo for details
+genes
+@
+\medskip
+
+The \Rclass{GRanges} accessors include \Rclass{IRanges} accessors and others:
+<<GRanges_accessors,cache=TRUE>>=
+width(genes)
+names(genes)
+seqnames(genes)
+strand(genes)
+ranges(genes)
+genes$Symbol
+mcols(genes)
+seqinfo(genes)
+seqlevels(genes)
+@
+
+\subsubsection{GRangesList}
+As for \Rclass{IRangesList}, there is a \Rclass{GRangesList} class which allows to store \Rclass{GRanges} in a list-type object. This is typically used to store e.g.\ \Rclass{GRanges} of exons arranged by transcripts or genes or \Rclass{GRanges} of transcripts arranged by genes. The vignette of the \Biocpkg{GenomicRanges} package provides a good example of 2 transcripts, one of which has 2 exons:
+<<GRangesList_objects,cache=TRUE>>=
+gr1 = GRanges(seqnames = "chr2", ranges = IRanges(3, 6),
+              strand = "+", score = 5L, GC = 0.45)
+gr2 = GRanges(seqnames = c("chr1", "chr1"),
+              ranges = IRanges(c(7,13), width = 3),
+              strand = c("+", "-"), score = 3:4, GC = c(0.3, 0.5))
+grl = GRangesList("txA" = gr1, "txB" = gr2)
+grl
+length(grl)
+elementNROWS(grl)
+grl["txB","GC"]
+unlist(grl)
+@
+Please refer to the \href{http://bioconductor.org/packages/release/bioc/vignettes/GenomicRanges/inst/doc/GenomicRangesIntroduction.pdf}{vignette} for further examples.\\
+Most accessors and functions defined for \Rclass{GRanges} also work on \Rclass{GRangesList}. However, note that \Rcode{mcols(grl)} now refers to metadata at the list level rather than at level of the individual \Rclass{GRanges} objects.
+
+\subsubsection{Annotations as GenomicRanges: TxDb* packages}
+<<GenomicFeatures_lib,eval=FALSE,echo=FALSE>>=
+require(GenomicFeatures, quietly = T)
+@
+<<TxDb_Dmel_lib,eval=FALSE,echo=FALSE>>=
+require(TxDb.Dmelanogaster.UCSC.dm3.ensGene, quietly = T)
+@
+Here, we will briefly present the \Bioconductor{} annotation packages which provide genome-wide annotations directly as \Rclass{GRanges} and \Rclass{GRangesList} objects. These packages, called \Rclass{TxDb*} can be built using the \Biocpkg{GenomicFeatures} package.\\
+Here, we show how to extract information from the \Biocannopkg{TxDb.Dmelanogaster.UCSC.dm3.ensGene} package.\\
+A \Rclass{GRanges} object with the genomic coordinates for the genes can be obtained using:
+<<TxDb_GRanges_extract,eval=TRUE,echo=TRUE,cache=TRUE>>=
+Dmg=genes(TxDb.Dmelanogaster.UCSC.dm3.ensGene,single.strand.genes.only=T)
+Dmg
+@
+Other functions, such as \Rfunction{transcripts}, \Rfunction{exons}, \Rfunction{cds}, \Rfunction{promoters}, \Rfunction{microRNAs} and \Rfunction{tRNAs} allow to extract the corresponding genomic features.\\
+\medskip
+
+A \Rclass{GRangesList} object with the coordinates of the transcripts arranged by genes can be obtained using:
+<<TxDb_GRangesList_extract,eval=TRUE,echo=TRUE,cache=TRUE>>=
+Dmt=transcriptsBy(TxDb.Dmelanogaster.UCSC.dm3.ensGene,by="gene")
+Dmt
+@
+The functions \Rfunction{exonsBy}, \Rfunction{cdsBy}, \Rfunction{intronsByTranscript}, \Rfunction{fiveUTRsByTranscript}, \Rfunction{threeUTRsByTranscript} allow to extract the corresponding genomic features arranged in a \Rclass{GRangesList} object.\\
+\medskip
+
+Other functions including \Rfunction{transcriptsByOverlaps} and \Rfunction{exonsByOverlaps} allow to extract genomic features for genomic locations specified by a \Rclass{GRanges} object:
+<<TxDb_extractByOverlap,cache=TRUE>>=
+exonsByOverlaps(TxDb.Dmelanogaster.UCSC.dm3.ensGene,genes)
+@
+\medskip
+
+When a \Rclass{TxDb} package is paired with an appropriate \Rclass{BSgenome} object, it is relatively straightforward to extract DNA sequences providing a \Rclass{GRanges} or a \Rclass{GRangesList}
+<<TxDb_convert2Seq,cache=TRUE>>=
+getSeq(BSgenome.Dmelanogaster.UCSC.dm3,Dmg[1:2])
+Dmc=cdsBy(TxDb.Dmelanogaster.UCSC.dm3.ensGene,by="tx")
+cds_seq=extractTranscriptSeqs(BSgenome.Dmelanogaster.UCSC.dm3,Dmc[1:2])
+cds_seq
+translate(cds_seq)
+@
+\medskip
+
+\subsubsection{GRanges methods}
+\label{subsubsec:GRanges_methods}
+
+Most if not all functions defined for \Rclass{IRanges} objects are also defined for \Rclass{GRanges} and \Rclass{GRangesLIst} objects and they are generally \emph{seqnames}- and \emph{strand}-aware. These include:
+\begin{itemize}
+  \item intra-range operations (\Rcode{shift}, etc.~; see paragraph~\ref{subsubsec:IRanges_intraops} and \Rcode{help('intra-range-methods',"GenomicRanges")})
+  \item inter-range operations (\Rcode{reduce}, etc.~; see paragraph~\ref{subsubsec:IRanges_interops} and \Rcode{help('inter-range-methods',"GenomicRanges")})
+  \item set operations (see paragraph~\ref{subsubsec:IRanges_setops} and \Rcode{help('setops-methods',"GenomicRanges")})
+  \item nearest methods (\Rcode{nearest}, etc.~; see paragraph~\ref{subsubsec:IRanges_nearest} and \Rcode{help('nearest-methods',"GenomicRanges")})
+  \item between ranges ("overlaps") operations presented below in paragraph~\ref{subsubsec:GRanges_overlap} 
+\end{itemize}
+
+Here, we briefly illustrate some of these functions:
+<<GRanges_methods,cache=TRUE>>=
+genes
+genes2=Dmg[c(1:2,21:22,36:37)]
+genes2
+sort(genes2)
+c(genes,genes2,ignore.mcols=T) #combine
+intersect(genes,c(genes2,Dmg['FBgn0031208'])) #set operations
+nearest(genes,genes2) #nearest-methods
+nearest(genes,genes2,ignore.strand=T) #strand-aware by default
+precede(genes,genes2,ignore.strand=T)
+promoters(genes,upstream=200,downstream=1) #intra-range operations
+reduce(Dmt[[2]]) #inter-range operations
+@
+See also \Rcode{help('GenomicRanges-comparison',"GenomicRanges")} for other functions for comparing \Rclass{GenomicRanges}.
+
+\subsubsection{Overlaps between ranges}  \label{subsubsec:GRanges_overlap}
+A very common task on genomic ranges is to search for overlaps between sets of genomic ranges which corresponds to an operation between ranges. These functions are defined for several classes of objects, including \Rclass{IRanges}, \Rclass{GRanges} and their list-type counterparts \Rclass{IRangesList} and \Rclass{GRangesList} but also \Rclass{Views} and \Rclass{ViewsList} among others. Details on function definitions can be found using \Rcode{?'findOverlaps-methods'}.
+
+As first example, let's count how many of the transcription start sites (TSS) in the Drosophila melanogaster genome are located at more than 500bp from another gene:
+<<countOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE>>=
+Dm_tss=unlist(reduce(promoters(Dmt,up=0,down=1))) #get all TSS
+cov_tss_g500=countOverlaps(Dm_tss,Dmg+500) #strand-aware!
+table(cov_tss_g500)
+sum(cov_tss_g500>1)
+cov_tss_g500_bs=countOverlaps(Dm_tss,Dmg+500,ignore.strand=T) #both strands
+sum(cov_tss_g500_bs>1)
+@
+Getting the corresponding overlaps with \Rfunction{findOverlaps}:
+<<findOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE>>=
+fov_tss_g500_bs=findOverlaps(Dm_tss,Dmg+500,ignore.strand=T)
+Dmg[c(1,1383)]
+@
+
+Now, imagine we have a set of 10K NGS reads:
+<<randomreads2L,cache=TRUE>>=
+set.seed(0)
+randomreads2L=GRanges(seqnames="chr2L",
+                    ranges=IRanges(start=floor(runif(10000,5000,50000)),width=100),
+                    strand="*")
+@
+And we want to select only the reads overlapping with those two genes:
+<<Dmg_2genes,cache=TRUE>>=
+sort(Dmg)[1:2]
+@
+We could use:
+<<subsetByOverlaps_example,cache=TRUE>>=
+subsetByOverlaps(randomreads2L,sort(Dmg)[1:2])
+@
+or:
+<<overlapsAny_example,cache=TRUE>>=
+randomreads2L[overlapsAny(randomreads2L,sort(Dmg)[1:2])]
+@
+To count the number of reads overlapping with those 2 genes we could use:
+<<counting reads_example,cache=TRUE>>=
+assays(summarizeOverlaps(sort(Dmg)[1:2],randomreads2L,mode="Union"))$counts
+@
+Further examples of counting reads are provided in paragraph~\ref{sub:CountingReads}. 
+\medskip
+
+%===================================
+\subsection{RangedData}
+%===================================
+<<RangedData_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## RangedData
+##--------- ##
+@
+
+The \Rclass{RangedData} class is defined in the \Biocpkg{IRanges} package. It contains genomic coordinates along with some values (typically a numerical variable) defined on these ranges. In practice, metadata (\emph{mcols}) of a \Rclass{GRanges} object can contain such data and the user would rather work with \Rclass{GRanges}. However, we mention here the \Rclass{RangedData} class because it is a more general data structure used in some packages (see for example the \Biocpkg{rtracklayer} vignette).
+\medskip
+
+
+%=====================================================================
+\section{Working with FASTQ files}
+%=====================================================================
+<<Fastq_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Working with Fastq files
+##---------------------------------------------------------##
+@
+In this paragraph, we present some functions from the \Biocpkg{ShortRead} package which is primarily dedicated to manipulating and analyzing raw (not mapped) NGS reads contained in FASTQ files~\cite{pmid19654119}.
+\medskip
+
+%===================================
+\subsection{FASTQ format}
+%===================================
+<<FASTQ_format_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## FASTQ format
+##--------- ##
+@
+
+During the sequencing process, raw data are generated (some sort of physical measurements) and processed (image analysis, signal processing, etc.) resulting in sequences and quality informations which are typically presented in FASTQ files. The \href{http://en.wikipedia.org/wiki/FASTQ_format}{FASTQ format} contains both sequence and quality informations ("FASTQ~=~FASta~+~Quality"). Both sequences and \href{http://en.wikipedia.org/wiki/Phred_quality_score}{Phred quality scores} are encoded using \href{http://en.wikipedia.org/wiki/ASCII}{ASCII} printable characters. In a FASTQ file, the information for each read occupies 4 lines:\\
+
+\medskip
+
+\begin{tabular}{ll}
+@read01087                    & \texttt{\emph{read name}}\\
+GCCTTCTTGTACGTTTTTGCTGTGAGT   & \texttt{\emph{read sequence}}\\
++                             & \texttt{\emph{separation line}}\\
+GGGGBB@DB?+$>$B?B$>$EE?:E\#\#\#\#\#\#   & \texttt{\emph{read quality}}
+\end{tabular}
+
+%===================================
+\subsection{Reading FASTQ files}
+%===================================
+<<FASTQ_reading_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Reading FASTQ files
+##--------- ##
+@
+
+%for Fastqstreamer, provide an example of getting the reads only on 2R and 2L for example
+<<ShortRead_lib,eval=FALSE,echo=FALSE>>=
+require(ShortRead, quietly = T)
+@
+
+<<ggplot2_lib,eval=FALSE,echo=FALSE>>=
+require(ggplot2, quietly = T)
+@
+
+The simplest function to import a FASTQ files in \R{} is:
+<<readFastq_example,eval=TRUE,echo=TRUE,cache=TRUE>>=
+fq1_path=system.file(package="ShortRead","extdata","E-MTAB-1147",
+                    "ERR127302_1_subset.fastq.gz")
+# A FASTQ file containing 20K reads
+myFastq=readFastq(fq1_path)
+@
+
+The resulting object can be explored using:
+<<ShortReadQ_accessors,cache=TRUE>>=
+myFastq
+myFastq[1:5]
+head(sread(myFastq),3)
+head(quality(myFastq),3)
+head(id(myFastq),3)
+encoding(quality(myFastq))
+alphabet(sread(myFastq))
+@
+
+However, FASTQ files are often too large to be imported at once in R. The first solution, often used to perform QA/QC, is to obtain a random sample of the reads:
+<<FastqSampler,cache=TRUE>>=
+set.seed(123)
+fqs1K = FastqSampler(fq1_path,1000)
+reads_sample=yield(fqs1K)
+close(fqs1K) #close connection
+reads_sample
+@
+The default sample size is 1 million reads which fits easily into memory.
+
+If we need to work on all the reads, we would process the FASTQ file in chunks. In this trivial example we count the number of reads in the FASTQ file:
+<<FastqStreamer,cache=TRUE>>=
+nr_myFastq=0
+strm <- FastqStreamer(fq1_path,1000)
+repeat {
+        fq <- yield(strm)
+        if (length(fq) == 0)
+          break
+  ## Get FASTQ chunk
+        nr_myFastq=nr_myFastq+length(fq)
+  ## Do something on the chunk 
+}
+close(strm) #close the connection
+nr_myFastq
+@
+
+%===================================
+\subsection{Quality assessment on FASTQ files}  \label{sub:QC_on_FASTQ}
+%===================================
+<<QAonFASTQ_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Quality assessment on FASTQ files
+##--------- ##
+@
+
+One major reason to analyze FASTQ files is to evaluate the quality and potential biases associated with the sequencing process. Outside of R, the \href{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/}{Fastqc} tool is widely used to perform such an analysis. It uses a random sample drawn from the FASTQ file to obtain some statistics on the reads. One of its limitation is that it generates one report for each sample which does not simplify comparisons between the samples.\\
+The \Biocpkg{ShortRead} package provides efficient functions to generate an HTML QA report for multiple samples:
+<<ShortRead_qa2,cache=TRUE>>=
+fqPath = system.file(package="ShortRead", "extdata", "E-MTAB-1147")
+fqFiles = dir(fqPath, pattern="fastq.gz", full=TRUE)
+coll = QACollate(QAFastqSource(fqFiles), QAReadQuality(),
+                  QAAdapterContamination(), QANucleotideUse(),
+                  QAQualityUse(), QASequenceUse(),
+                  QAFrequentSequence(n=10), QANucleotideByCycle(),
+                  QAQualityByCycle())
+qa2OnFastq = qa2(coll,BPPARAM=SerialParam(), verbose=FALSE)
+## qa_report=report(qa2OnFastq) #generate the report
+## browseURL(qa_report) #display in your browser
+slotNames(qa2OnFastq)
+names(qa2OnFastq)
+slotNames(qa2OnFastq[["QANucleotideUse"]])
+qa2OnFastq[["QANucleotideUse"]]
+@
+As illustrated, individual results from the quality analysis can be extracted from the \Rclass{.QA} object but this is not well documented yet, nor particularly easy.\\
+
+An alternative is to use the \Rfunction{qa} function from which it is relatively easy to extract individual components and to generate separate plots such as Figure~\ref{fig:ShortRead_qa}:
+<<ShortRead_qa,cache=TRUE,fig.align="center",fig.width=8, fig.height=5,fig.cap='Distribution of average base quality.',fig.pos="!h",out.width="0.8\\textwidth">>=
+qaOnFastq = qa(fqPath,"fastq.gz",BPPARAM=SerialParam()) #collect statistics
+qaOnFastq[["readCounts"]]
+readQuals <- qaOnFastq[["readQualityScore"]]
+ggplot(readQuals,aes(x=quality,y=density,colour=lane))+
+                    geom_line(size=1)+
+                    scale_colour_discrete(name="Lane",
+                                          breaks=c("ERR127302_1_subset.fastq.gz",
+                                                   "ERR127302_2_subset.fastq.gz"),
+                                          labels=c("ERR127302_1","ERR127302_2"))
+@
+
+\bigskip
+
+There are also other \Bioconductor{} packages more or less dedicated to generate and plot QA/QC statistics from FASTQ files. These include the \Biocpkg{seqTools}, \Biocpkg{qrqc} and \Biocpkg{Rqc} packages. The latter two packages make use of \CRANpkg{ggplot2} graphics. A couple examples using \Biocpkg{Rqc} are illustrated in Figure~\ref{fig:Rqc_examples}
+
+<<Rqc_lib,eval=FALSE,echo=FALSE>>=
+require(Rqc, quietly = T)
+@
+
+<<Rqc_examples,fig.width=5, fig.height=5,fig.pos="h",out.width="0.49\\linewidth",out.height="6cm",fig.show='hold',fig.cap="Examples of QC plots using the Rqc package",cache=TRUE,warning=F>>=
+rqcResultSet = rqcQA(fqFiles,sample=T)
+rqcCycleQualityPlot(rqcResultSet[1])
+rqcCycleBaseCallsLinePlot(rqcResultSet[2])
+@
+
+\medskip
+
+%===================================
+\subsection{Reads filtering and trimming}
+%===================================
+<<Reads_fitering_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Reads filtering and trimming
+##--------- ##
+@
+
+Based on QA/QC it is sometimes advisable to perform read filtering and to trim the extremities of the reads. The \Biocpkg{ShortRead} allows to perform such filtering and trimming steps with great flexibility. Note that the choices made below are only to illustrate the different functions, not to recommend some specific preprocessing in the general case.\\
+First, we create some filters:
+<<ShortRead_create_filters,cache=TRUE>>=
+max1N=nFilter(threshold=1L)
+#Remove reads with more than 1N
+goodq = srFilter(function(x){
+                            apply(as(quality(x),"matrix"),
+                            1,median,na.rm=T)>=30
+                            },
+                 name="MedianQualityAbove30")
+#Custom filter: Remove reads with median quality<30
+myFilter=compose(max1N,goodq) #combine filters
+@
+
+\medskip
+Then, we create a function to apply filters and trimming on chunks of a FASTQ file:
+<<ShortRead_filterfunction,eval=TRUE,cache=TRUE>>=
+FilterAndTrim = function(fl,destination=sprintf("%s_filtered",fl))
+{
+  stream = FastqStreamer(fl)
+  on.exit(close(stream))
+  ## open input stream
+  
+  repeat {
+    fq=yield(stream)
+    if (length(fq)==0)
+      break
+    ## get fastq chunk
+    
+    ###TRIM
+    fq = narrow(fq,start=5,end=70)
+    ## trim the first 4 and the last 2 bases
+
+    ####FILTER
+    fq = fq[myFilter(fq)]
+    ## remove reads that:
+      ## contain more than 1 N
+      ## have median quality < 30
+    
+    writeFastq(fq, destination, mode="a")
+    ## Append to fastq file
+  }
+}
+@
+
+\medskip
+
+Finally we apply this function on a FASTQ file:
+<<ShortRead_ApplyFilter,eval=F,echo=TRUE,cache=TRUE>>=
+FilterAndTrim(fqFiles[1],
+              destination=file.path(getwd(),"FilteredFastq.fastq"))
+FilteredFastq=readFastq("FilteredFastq.fastq")
+FilteredFastq
+@
+
+
+
+%=====================================================================
+\section{Working with SAM/BAM files}  \label{sec:SAM_BAM_Files}
+%=====================================================================
+
+<<SAMBAM_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Working with SAM/BAM files
+##---------------------------------------------------------##
+@
+
+<<Rsamtools_lib,eval=FALSE,echo=FALSE>>=
+require(Rsamtools, quietly = T)
+@
+
+<<GenomicAlignments_lib,eval=FALSE,echo=FALSE>>=
+require(GenomicAlignments, quietly = T)
+@
+
+%===================================
+\subsection{Tools for SAM/BAM files}
+%===================================
+<<ToolsForSAMBAM_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Tools for SAM/BAM files
+##--------- ##
+@
+
+When a reference genome sequence is available, the reads are generally mapped to this reference using one of the NGS read aligner available (see paragraph~\ref{sub:PatternMatch_SeqAlign}). Note that R provides an interface to \href{http://bowtie-bio.sourceforge.net/index.shtml}{bowtie} and \href{http://web.stanford.edu/group/wonglab/SpliceMap/}{SpliceMap}~\cite{pmid20371516} aligners via the \Biocpkg{Rbowtie} package which is used in the pipeline of the \Biocpkg{QuasR} package. The \Biocpkg{Rsubread} package also provides a relatively complete pipeline for NGS data analysis. It includes a specific aligner (\href{http://subread.sourceforge.net/}{\emph{Subread}}) based on an original "seed-and-vote" mapping algorithm~\cite{pmid23558742} as well as tools to count (\emph{featureCounts}) the reads within genomic features~\cite{pmid24227677} and to map exon junctions from RNA-seq data.\\
+
+Once aligned, the reads and their genomic coordinates (defined by chromosome, position and strand) are typically returned in a \href{http://samtools.github.io/}{SAM} file~\cite{pmid19505943}. A \href{http://samtools.github.io/hts-specs/SAMv1.pdf}{BAM} file contains the same information as the corresponding SAM file but BAM is a binary format and thus BAM file size is reduced and its content is not human-readable. These files are often manipulated with \href{http://www.htslib.org/}{Samtools}, \href{http://broadinstitute.github.io/picard/}{Picard Tools} and \href{https://www.python.org/}{Python} scripts. A nice explanation of what SAM/BAM files contain can be found \href{http://genome.sph.umich.edu/wiki/SAM}{here}.\\
+
+Here, we will mainly use the following libraries:
+
+\begin{itemize}
+  \item \Biocpkg{Rsamtools} which provides an interface to samtools, bcftools and tabix (see \url{https://github.com/samtools})
+  \item \Biocpkg{GenomicAlignments} which provides efficient tools to manipulate short genomic alignments
+\end{itemize}
+
+\medskip
+
+Examples of BAM files from single- and paired-read sequencing are provided in the \Biocexptpkg{pasillaBamSubset}.\\
+
+
+%===================================
+\subsection{Importing BAM files}
+%===================================
+<<Importing_BAM_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Importing BAM files
+##--------- ##
+@
+
+\subsubsection{Single-end reads}  \label{subsub:SingleEnd_Reads}
+
+The path for the BAM file is obtained with:
+<<sr_bamfile_path,cache=TRUE>>=
+sr_bamFile=untreated1_chr4() # from passilaBamSubset package 
+@
+\medskip
+
+If the BAM file was not indexed yet (i.e.\ a .bai file present in the same directory and nammed as the .bam file), we could build such an index using:
+<<build_BAM_index,eval=FALSE,echo=TRUE>>=
+indexBam(sr_bamFile)
+@
+Note that a number of other functions are available to manipulate SAM/BAM files, such as \Rfunction{asSam}/\Rfunction{asBam}, \Rfunction{sortBam} or \Rfunction{mergeBam}. See \Rcode{?scanBam} for details.\\
+
+Now, we could define which regions of the genome we would like to import (\emph{'which'}~; note that here only chr4 is available in the BAM file but for the example we try to extract data from chr2L also), which columns of the BAM file we would like to import (\emph{'what'}) and possibly filters for unwanted reads (\emph{'flag'}). These informations are stored in a \Rclass{ScanBamParam} object:
+<<ScamBamParam_define,eval=TRUE,echo=TRUE,cache=TRUE>>=
+which = RangesList("chr2L"=IRanges(7000,10000),
+                   "chr4"=IRanges(c(75000,1190000),c(85000,1203000)))
+
+scanBamWhat() #available fields
+what = c("rname","strand","pos","qwidth","seq")
+flag=scanBamFlag(isDuplicate=FALSE)
+param=ScanBamParam(which=which,what=what,flag=flag)
+@
+See \Rcode{?ScanBamParam} for other options and examples. As briefly illustrated it is easy to define filters (based on \href{http://broadinstitute.github.io/picard/explain-flags.html}{SAM flags} using \Rfunction{scanBamFlag} or on tags present in the SAM/BAM files) when importing your BAM files.\\
+
+Now, we use \Rfunction{scanBam} from \Biocpkg{Rsamtools} to import the data in R:
+<<srBAM_import_scanBam,cache=TRUE>>=
+mysrbam=scanBam(sr_bamFile,param=param)
+class(mysrbam)
+names(mysrbam)
+sapply(mysrbam,sapply,length)["rname",] #number of imported reads
+@
+The resulting object is a list which is not always easy to manipulate for downstream applications.\\
+\medskip
+
+So we would rather use the \Rfunction{readGAlignments} from the \Biocpkg{GenomicAlignments} package:
+<<srBAM_import_readGAlignments,cache=TRUE>>=
+mysrbam2=readGAlignments(sr_bamFile,
+                         param=ScanBamParam(which=which,
+                                            what="seq",
+                                            flag=flag))
+mysrbam2[1:2]
+@
+Note that we have redefined the ScanBamParam. This is because \Rfunction{readGAlignments} comes with predefined fields to import and we just need to add those extra fields we want to import in the \Rclass{ScanBamParam} parameter object. Here we imported the sequences to show that they are imported as a \Rclass{DNAStringSet} but it is generally not necessary to keep these sequences once the reads have been mapped.\\
+
+So we don't keep them for the next steps:
+<<srBAM_import_readGAlignments_v2,cache=TRUE>>=
+mysrbam2=readGAlignments(sr_bamFile,
+                         param=ScanBamParam(which=which))
+mysrbam2[1:2]
+@
+The object returned is a \Rclass{GAlignments} (see \Rcode{?'GAlignments-class'} for details and accessors).\\
+\medskip
+
+These objects are highly similar to \Rclass{GRanges}. They can be accessed with similar functions:
+<<GAlignments_accessors,cache=TRUE>>=
+head(start(mysrbam2))
+head(width(mysrbam2))
+seqnames(mysrbam2)
+cigar(mysrbam2)[1:3]
+head(njunc(mysrbam2))
+@
+\medskip
+
+They can be converted to \Rclass{GRanges}:
+<<GAlignments_to_GRanges,cache=TRUE>>=
+granges(mysrbam2)[1:2]
+@
+\medskip
+
+And one can easily access the details of each read alignment as \Rclass{GRanges} organized in a \Rclass{GRangesList} using:
+<<GAlignments_getJunctions,cache=TRUE>>=
+grglist(mysrbam2)[[1]] #only first read shown element here
+junctions(mysrbam2)[[1]] #and the corresponding junctions
+@
+See below and in \Rcode{help('junctions-methods',"GenomicAlignments")}, \Rcode{help('findOverlaps-methods',"GenomicAlignments")} and \Rcode{help('coverage-methods',"GenomicAlignments")} for other methods defined on \Rclass{GAlignments} objects.\\
+%\fixme{TODO : add an example or mention only the use of BamViews (Rsamtools) to extract references to several bam files on specific views}
+\subsubsection{Paired-end reads}
+\label{subsub:Paired-end_reads}
+An example of paired-end data is available in the \Biocexptpkg{pasillaBamSubset} package:  
+<<pr_bamfile_path,cache=TRUE>>=
+pr_bamFile=untreated3_chr4() # from passilaBamSubset package
+@
+We can extract these data using:
+<<readGAlignmentsPairs,cache=TRUE>>=
+myprbam=readGAlignmentPairs(pr_bamFile,
+                              param=ScanBamParam(which=which))
+myprbam[1:2]
+@
+The \Rclass{GAlignmentPairs} class holds only read pairs (reads with no mate or with ambiguous pairing are discarded). Note that the \Rfunction{readGalignmentPairs} function has a strandMode argument to specify how to report the strand of a pair. For stranded protocols, depending how the libraries were generated, strandMode should be set to 1 (the default for e.g. directional Illumina protocol by ligation) or 2 (e.g. for dUTP or Illumina stranded TruSeq PE protocol).\\
+\medskip
+The individual reads can be accessed as \Rclass{GAlignments} objects using:
+<<readGAlignmentsPairs_access,cache=TRUE>>=
+myprbam[1] #first record
+first(myprbam[1]) #first sequenced fragment
+last(myprbam[1]) #last sequenced fragment
+@
+\medskip
+
+We could also use the \Rfunction{readGAlignmentsList} function which returns both mate-pairs and non-mates in a more classical "list-like" structure:
+<<readGAlignmentsList,cache=TRUE>>=
+myprbam_list=readGAlignmentsList(pr_bamFile,
+                                 param=ScanBamParam(which=which))
+myprbam_list[1:2]
+table(elementNROWS(myprbam_list))
+summary(mcols(myprbam_list)$mate_status) #mate status as metadata
+@
+
+Sometimes, it is desirable to process the BAM file in chunk. The \Rfunction{BamFile} allows to create a reference to a BAM file which can be opened, used in a loop and then closed (example taken from the excellent \href{http://www.bioconductor.org/packages/release/bioc/vignettes/GenomicRanges/inst/doc/GenomicRangesHOWTOs.pdf}{HOWTO} vignette from the \Biocpkg{GenomicRanges} package):
+<<Looping_on_BAM,cache=TRUE>>=
+bf = BamFile(sr_bamFile,yieldSize=100000) #create reference
+open(bf) #open connection
+cvg = NULL #initialize
+
+repeat {
+  chunk <- readGAlignments(bf) #loop on the BAM file
+  if (length(chunk) == 0L)
+    break
+  chunk_cvg <- coverage(chunk)
+  if (is.null(cvg)) {
+    cvg <- chunk_cvg
+  } else {
+    cvg <- cvg + chunk_cvg
+  }
+}
+close(bf)
+
+cvg$chr4
+@
+Note that such a loop is now directly performed by the \Rfunction{coverage} method for \Rclass{BamFile} class.\\
+For details, see \Rcode{?"coverage,GAlignments-method"}.\\
+
+\medskip
+
+%===================================
+\subsection{Some QA/QC on aligned reads}
+%===================================
+<<QAQC_on_BAM_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Some QA/QC on aligned reads
+##--------- ##
+@
+The \Rfunction{qa} function from the \Biocpkg{ShortRead} also performs quality assessements on BAM files. Alternatively, a quick summary can be generated using:
+
+<<quickBamFlagSummary,cache=TRUE>>=
+quickBamFlagSummary(pr_bamFile)
+@
+This could allow to select relevant filters when importing the data in \R{}.\\
+
+\medskip
+
+
+%===================================
+\subsection{Computing a coverage}
+%===================================
+<<Coverage_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Computing a coverage
+##--------- ##
+@
+Computing a coverage (number of reads aligning at a given position on the genome) on a \Rclass{GAlignments} is straightforward:
+<<Coverage_calc,cache=TRUE>>=
+cvg_sr=coverage(mysrbam2)
+cvg_sr$chr4
+@
+The result is an \Rclass{RleList} organized by chromosomes.\\
+\medskip
+
+We can extract specific \Rclass{Views} from this object:
+<<coverage_extract_Views,cache=TRUE>>=
+which_chr4_gr=GRanges(seqnames="chr4",
+                      ranges=which$chr4,strand="*") #convert imported intervals to GRanges
+ex_chr4=exonsByOverlaps(TxDb.Dmelanogaster.UCSC.dm3.ensGene,which_chr4_gr) #get exons
+head(Views(cvg_sr$chr4,ranges(ex_chr4))) #extract Views
+@
+\medskip
+
+Note that the coverage function is not strand specific. If we want the coverage for the minus strand only, we could use:
+<<coverage_By_strand,cache=TRUE>>=
+coverage(mysrbam2[strand(mysrbam2)=="-"])$chr4
+@
+\medskip
+
+It is sometimes necessary to shift or resize the reads before computing coverage. This is a typical situation in ChIP-seq data analysis when the binding of a transcription factor or a chromatin mark with punctuate enrichment is studied. Here, we load some ChIP-seq experimental data from the \Biocannopkg{MMDiffBamSubset} and import the reads as a \Rclass{GAlignments} objet:
+<<Get_ChIPseq_data,cache=TRUE>>=
+# library(MMDiffBamSubset)
+ChIPex_path = WT.AB2() #from MMDiffBamSubset package
+ChIP_ga=readGAlignments(ChIPex_path,
+                        param=ScanBamParam(
+                          which=GRanges(seqnames="chr1",
+                                        ranges=IRanges(3e6,5e6),
+                                        strand="*")))
+@
+
+Then we can compute the coverage after applying some tranformation on the reads (shift or resize):
+<<coverage_shift_reduce,cache=TRUE>>=
+coverage(ChIP_ga)$chr1
+coverage(ChIP_ga,shift=150)$chr1 #directly in coverage (!shift is not strand-aware)
+coverage(ChIP_ga,shift=150*as.numeric(paste(strand(ChIP_ga),"1",sep="")))$chr1 #now "strand-aware" shift
+coverage(resize(granges(ChIP_ga),300))$chr1 #resize via a GRanges (strand-aware)
+@
+
+\medskip
+
+%===================================
+\subsection{Finding peaks in read coverage}
+%===================================
+<<Finding_peaks_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Finding peaks in read coverage
+##--------- ##
+@
+
+In ChIP-seq experiments, one often look for "peaks" (or broad regions in e.g.\ ChIP of chromatin marks or PolII) in the read coverage. This task, often called "peak calling" or "peak finding" can be performed outside of R with one of the numerous "peak callers" available such as \href{http://liulab.dfci.harvard.edu/MACS/}{MACS}~/~\href{https://github.com/taoliu/MACS/}{MACS2}, \href{http://compbio.med.harvard.edu/Supplements/ChIP-seq/}{SPP} or \href{http://home.gwu.edu/~wpeng/Software.htm}{SICER} (for broad regions). A number of specific and advanced tools also exist in R to perform peak calling such as: \Biocpkg{BayesPeak}, \Biocpkg{chipseq}, \Biocpkg{bumphunter}, \Biocpkg{exomePeak}, \Biocpkg{CSAR}, \Biocpkg{jmosaics} or \Biocpkg{PICS}. Here, we only illustrate a naive approach to get a list of peaks by applying a single threshold on the coverage object using the \Rfunction{slice} function:
+<<Slice_on_coverage,cache=TRUE>>=
+cvg_H3K4me3=coverage(resize(granges(ChIP_ga),300))
+slice(cvg_H3K4me3,lower=20)$chr1
+@
+
+\fixme{more examples soon...maybe...} %TODO: add a nicer example. Using chipseq first and then maybe PICS or BayesPeak
+
+\medskip
+
+%===================================
+\subsection{Counting reads / read summarization} \label{sub:CountingReads}
+%===================================
+<<CountingReads_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Counting reads / read summarization
+##--------- ##
+@
+
+Another common task is to count how many reads align to a set of genomic features. This counting operation is sometimes called read summarization or data reduction. It is typically done in RNA-seq experiments to produce a count matrix for subsequent analysis. The counts can be obtained on e.g.\ genes, transcripts or exons depending on the aim of the study. Some packages such as \Biocpkg{Rsubread}, \Biocpkg{QuasR} and \Biocpkg{easyRNAseq} provide specific functions to perform the counting step. Here we only present the general function \Rfunction{summarizeOverlaps} from \Biocpkg{GenomicAlignments}.\\
+
+\medskip
+
+We want to count the reads aligning on the exons. So we first get the exons, organized by genes, which are located in our region of interest:
+<<GetExonsByGene_chr4,cache=TRUE>>=
+exbygn_chr4=subsetByOverlaps(exonsBy(TxDb.Dmelanogaster.UCSC.dm3.ensGene,
+                                     by="gene"),ex_chr4)
+@
+\medskip
+
+Then we use the \Rfunction{summarizeOverlaps} function to obtain the counts (\emph{Note that the counting is strand-aware by default!}):
+<<summarizeOverlaps_ex1,cache=TRUE>>=
+count_res=summarizeOverlaps(exbygn_chr4, mysrbam2, mode="Union")
+count_res
+assays(count_res)$counts
+@
+
+\bigskip
+
+Different count modes are available, as in \href{http://www-huber.embl.de/HTSeq/}{HTSeq} . These are illustrated in Figure~\ref{fig/countmodes.png}.
+
+\medskip
+
+  \incfig[h]{fig/countmodes.png}{0.7\linewidth}{Count modes.}{Taken from the \href{http://www-huber.embl.de/HTSeq/doc/count.html\#count}{HTSeq website}}
+
+\medskip
+
+The result of \Rfunction{summarizeOverlaps} (here \Robject{count\_res}) is a \Rclass{SummarizedExperiment} object (See \emph{help(SummarizedExperiment, package="GenomicRanges")} for details and accessors). This class is very similar to the \Rclass{eSet} class (from the \Biocpkg{Biobase} package) which is often used to analyze microarray data. In \Rclass{eSet} objects, the features are typically microarray probes, probesets or genes corresponding to these probes. In \Rclass{summarizedExperiment} objects, the features (i.e. rows) are ranges of interest. Figure~\ref{fig/summarizedExperiment_Object.png} illustrates the structure of a \Rclass{SummarizedExperiment} object.\\
+
+
+  \incfig[h]{fig/summarizedExperiment_Object.png}{0.8\linewidth}{Structure of \Rclass{summarizedExperiment} objects.}{Taken from~\cite{pmid25633503}. The \Rfunction{assays} component contains the data as rectangular matrices. The \Rfunction{rowData} and \Rfunction{colData} components contain metadata on the features and on the samples respectively. The \Rfunction{exptData} component contains experiment-level data. Code examples illustrate how to create a \Rfunction{summarizedExperiment}, subset it and access the components.}
+
+\bigskip
+
+
+To count reads from multiple BAM files we just need to enter the path to the BAM files as a character vector:
+<<summarizeOverlaps_ex2,cache=TRUE>>=
+count_res2=summarizeOverlaps(exbygn_chr4,
+                             c(sr_bamFile,pr_bamFile),
+                             mode="Union")
+
+assays(count_res2)$counts
+@
+
+
+There are several options available to perform read counting with \Rfunction{summarizeOverlaps}. Some examples are provided below:
+<<summarizeOverlaps_ex3,cache=TRUE>>=
+assays(summarizeOverlaps(exbygn_chr4,myprbam,mode="Union"))$counts
+assays(summarizeOverlaps(exbygn_chr4,myprbam,mode="Union", #ignore strand
+                         ignore.strand=T))$counts
+
+assays(summarizeOverlaps(exbygn_chr4,mysrbam2,mode="Union"))$counts
+assays(summarizeOverlaps(exbygn_chr4,mysrbam2,mode="Union", #resize the reads to 100
+                         preprocess.reads=function(x){resize(granges(x),100)}))$counts
+@
+See \Rcode{?summarizeOverlaps} for details and examples.\\
+
+\medskip
+
+The count matrix could then be used for normalization and differential analysis with the \Biocpkg{DESeq2}, \Biocpkg{edgeR}, \Biocpkg{limma}, \Biocpkg{DEXseq} packages for example.\\
+
+\medskip
+
+
+%=====================================================================
+\section{More annotation packages in \Bioconductor{}} \label{sec:MoreAnnotationPackages}
+%=====================================================================
+<<Annotation_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## More annotation packages in Bioconductor
+##---------------------------------------------------------##
+@
+
+<<AnnotationDbi_lib,eval=FALSE,echo=FALSE>>=
+require(AnnotationDbi)
+@
+
+<<org.Dm.eg.db_lib,eval=FALSE,echo=FALSE>>=
+require(org.Dm.eg.db)
+@
+
+<<drosophila2_ChipDb_lib,eval=FALSE,echo=FALSE>>=
+require(drosophila2.db)
+require(drosophila2probe)
+require(drosophila2cdf)
+@
+
+<<hom.Dm.inp.db_lib,eval=FALSE,echo=FALSE>>=
+require(hom.Dm.inp.db)
+@
+
+<<GO.db_lib,eval=FALSE,echo=FALSE>>=
+require(GO.db)
+@
+
+<<TxDb.Dmelanogaster.UCSC.dm3.ensGene_lib2,eval=FALSE,echo=FALSE>>=
+require(TxDb.Dmelanogaster.UCSC.dm3.ensGene)
+@
+
+
+%===================================
+\subsection{Types of annotation packages}
+%===================================
+<<TypesOfAnnotPackage_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Types of annotation packages
+##--------- ##
+@
+
+There are a number of annotation packages in \Bioconductor{} which can be browsed \href{http://www.bioconductor.org/packages/release/BiocViews.html\#\_\_\_AnnotationData}{here}. Annotations are provided as \Rclass{AnnotationDb} objects and the \Biocpkg{AnnotationDbi} provides a common interface to these objects. The vignette of the \Biocpkg{AnnotationDbi} provides a good introduction to the different types of package available. Figure~\ref{fig/AnnotationStructure.png}, adapted from this vignette, illustrates the different types of \emph{gene}- and \emph{genome}-centered annotation packages available in \Bioconductor{}.\\
+\medskip
+
+  \incfig[h]{fig/AnnotationStructure.png}{0.8\linewidth}{AnnotationDb packages.}{Adapted from the vignette of \Biocpkg{AnnotationDbi}}
+
+\medskip
+
+There are gene-centric packages:\\
+\begin{itemize}
+  \item Organism packages (\Rclass{OrgDb} class~; e.g.\ \Biocannopkg{org.Dm.eg.db})
+  \item Platform-level (essentially microarrays) packages (\Rclass{ChipDb} class: e.g.\ \Biocannopkg{drosophila2.db} and the corresponding \emph{probe} and \emph{cdf} packages: \Biocannopkg{drosophila2probe} and \Biocannopkg{drosophila2cdf})
+  \item Homology packages (\Rclass{InparanoidDb} class~; e.g.\ \Biocannopkg{hom.Dm.inp.db})
+  \item System-biology packages (e.g.\ \Biocannopkg{GO.db}, \Biocannopkg{KEGG.db}, \Biocannopkg{reactome.db})
+\end{itemize}
+\medskip
+
+And genome-centric packages:\\
+\begin{itemize}
+  \item Transcriptome-oriented packages (\Rclass{TxDb} class~; e.g.\ \Biocannopkg{TxDb.Dmelanogaster.UCSC.dm3.ensGene})
+  \item Generic Genome feature packages (\Rclass{FeatureDb} class, e.g.\ \Biocannopkg{FDb.UCSC.tRNAs}) that can be created with the \Biocpkg{GenomicFeatures} package
+\end{itemize}
+\medskip
+
+In addition, \Rclass{OrganismDb} packages were recently added based on the \Biocpkg{OrganismDbi} package. These packages basically combine all the above packages in a single package. These are available for \Biocannopkg{Homo.sapiens}, \Biocannopkg{Mus.musculus} and \Biocannopkg{Rattus.norvegicus}.
+Finally packages are available in \Bioconductor{} to enable the user to build his own annotation packages. These include \Biocpkg{AnnotationForge} and \Biocpkg{GenomicFeatures}.
+\medskip
+
+
+%===================================
+\subsection{Accessing annotations}
+%===================================
+<<AccessingAnnotations_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Accessing annotations
+##--------- ##
+@
+
+There are 4 basic functions to access nearly all annotations:
+\begin{itemize}
+  \item The \Rfunction{column} function shows the fields from which annotatios can be extracted
+  \item The \Rfunction{keytypes} function shows the field from which annotations can be extracted AND which can be used as keys to access these annotations
+  \item The \Rfunction{keys} function retrieves the keys themselves (i.e.\ values from a 'keytype' field used to access the annotation of the corresponding feature)
+  \item The \Rfunction{select} function extracts the data from the \Rclass{AnnotationDb} object from the \emph{columns} specified and providing a set of \emph{keys} of a given \emph{keytype}.
+\end{itemize}
+\medskip
+
+In our examples, we will explore the main packages for Drosophila melanogaster:
+\begin{itemize}
+  \item \Biocannopkg{org.Dm.eg.db}
+  \item \Biocannopkg{drosophila2.db} and the corresponding \Biocannopkg{drosophila2probe} and \Biocannopkg{drosophila2cdf} packages
+  \item \Biocannopkg{hom.Dm.inp.db}
+  \item \Biocannopkg{GO.db} (not specific to D. melanogaster)
+  \item \Biocannopkg{TxDb.Dmelanogaster.UCSC.dm3.ensGene}
+\end{itemize}
+\medskip
+
+First, we explore the \Rclass{OrgDb} package which contains gene-level annotations:
+<<Annotation_OrgDb_access,eval=-c(1,3,4),echo=TRUE,cache=TRUE>>=
+library(org.Dm.eg.db)
+columns(org.Dm.eg.db)
+help("PATH")
+keytypes(org.Dm.eg.db) #same as columns(org.Dm.eg.db) in this case
+uniKeys = keys(org.Dm.eg.db,keytype="UNIPROT")[c(5,6,24)]
+
+cols = c("SYMBOL","GO")
+select(org.Dm.eg.db,keys=uniKeys[1:2],columns=cols,keytype="UNIPROT")
+@
+\medskip
+
+The \Biocpkg{GO.db} package can be used to retrieve information on the identified \href{http://geneontology.org/}{Gene Ontology} categories (chosen also based on \href{http://geneontology.org/page/guide-go-evidence-codes}{Evidence codes}):
+<<Annotation_GOdb,eval=-1,echo=TRUE,cache=TRUE>>=
+library(GO.db)
+mygos=c("GO:0002121","GO:0003858","GO:0016319")
+select(GO.db,columns=columns(GO.db)[1:3],
+       keys=mygos,keytype="GOID")
+@
+
+We can also extract a whole table as a \Rclass{data.frame}:
+<<Annotation_GOdb_toTable,eval=-1,echo=TRUE,cache=TRUE>>=
+ls("package:GO.db")
+toTable(GOTERM)[1:3,1:4]
+@
+
+\medskip
+
+We can also search for a specific pattern in the keys:
+<<Annotation_OrgDb_keySearch,cache=TRUE>>=
+keys(org.Dm.eg.db,keytype="SYMBOL",pattern="EcR")
+
+select(org.Dm.eg.db,keys=c("EcR","DopEcR"),
+       columns=c("ENTREZID","CHR","FLYBASE","GENENAME"),keytype="SYMBOL")
+@
+\medskip
+
+\Rclass{ChipDb} packages contain annotations based on microarray probes:
+<<Annotation_ChIPDb,eval=-c(1,3),echo=TRUE,cache=TRUE>>=
+library(drosophila2.db)
+ls("package:drosophila2.db")[1:8]
+drosophila2.db #provides information on the underlying database
+columns(drosophila2.db)[1:7]
+select(drosophila2.db,columns=c("ENTREZID","SYMBOL","ENSEMBL"),
+       keys=c("1639797_at","1627097_at","1628020_at"),keytype="PROBEID")
+@
+\medskip
+
+The associated \emph{probe} and \emph{cdf} packages provide information on microarray probe sequences and on position on the array respectively. They are mainly used by different methods during the analysis of Affymetrix microaray data:
+<<Annotation_probeAndcdf,eval=-c(1,2),echo=TRUE,cache=TRUE>>=
+library(drosophila2probe)
+library(drosophila2cdf)
+drosophila2probe[1:2,] #a data frame with probe sequences
+ls("package:drosophila2cdf")
+@
+See the vignettes of the \Biocpkg{AnnotationDbi} packages for details.
+\medskip
+
+
+Homology \Rclass{InparanoidDb} packages contain the gene orthologs for a number of species. They are extracted from the \href{http://inparanoid.sbc.su.se/cgi-bin/index.cgi}{Inparanoid database}~\cite{pmid18055500} and can be interrogated both ways:
+<<Annotation_InparanoidDb,eval=-1,echo=TRUE,cache=TRUE>>=
+library(hom.Dm.inp.db)
+select(hom.Dm.inp.db,columns=c("HOMO_SAPIENS","CULEX_PIPIENS"),
+       keys=c("FBpp0084497", "FBpp0077213"),keytype="DROSOPHILA_MELANOGASTER")
+select(hom.Dm.inp.db,columns=c("HOMO_SAPIENS","DROSOPHILA_MELANOGASTER"),
+       keys=c("CPIJ014347","CPIJ005780"),keytype="CULEX_PIPIENS")
+@
+\medskip
+
+Finally, \Rclass{TxDb} packages can also be interrogated using the same methods:
+<<Annotation_TxDb,cache=TRUE>>=
+select(TxDb.Dmelanogaster.UCSC.dm3.ensGene,
+       columns=c("TXID","TXCHROM","TXSTRAND","TXSTART","TXEND"),
+       keys=c("FBgn0039183","FBgn0264342","FBgn0030583"),
+       keytype='GENEID')
+@
+\medskip
+
+\pagebreak
+
+%=====================================================================
+\section{Import/export of genomic data}
+%=====================================================================
+<<ImportExport_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Import/export of genomic data
+##---------------------------------------------------------##
+@
+
+<<rtracklayer_lib,eval=FALSE,echo=FALSE>>=
+require(rtracklayer, quietly = T)
+@
+
+<<Gviz_lib,eval=FALSE,echo=FALSE>>=
+require(Gviz, quietly = T)
+@
+
+<<AnnotationHub_lib,eval=FALSE,echo=FALSE>>=
+require(AnnotationHub, quietly = T)
+@
+
+<<biomaRt_lib,eval=FALSE,echo=FALSE>>=
+require(biomaRt, quietly = T)
+@
+
+<<SRADb_lib,eval=FALSE,echo=FALSE>>=
+require(SRAdb, quietly = T)
+@
+
+<<GEOquery_lib,eval=FALSE,echo=FALSE>>=
+require(GEOquery, quietly = T)
+@
+
+%===================================
+\subsection{\Bioconductor{} packages to import/export genomic data}
+%===================================
+
+In addition to annotation packages presented in paragraph~\ref{sec:MoreAnnotationPackages}, a number of \Bioconductor{} software packages provide interfaces with online databases containing annotations and experimental data.\\
+\smallskip
+Here, we will give some examples with the following packages:
+\begin{itemize}
+  \item \Biocpkg{rtracklayer}~\cite{pmid19468054}
+  \item \Biocpkg{AnnotationHub}
+  \item \Biocpkg{biomaRt}
+  \item \Biocpkg{GEOquery}
+  \item \Biocpkg{SRAdb}
+\end{itemize}
+\medskip
+
+%===================================
+\subsection{The \Biocpkg{rtracklayer} package}
+%===================================
+<<rtracklayer_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## The rtracklayer package
+##--------- ##
+@
+
+The main functionnality of the \Biocpkg{rtracklayer}~\cite{pmid19468054} is to import/export files in a number of different standard formats. These include \href{http://www.ensembl.org/info/website/upload/gff.html}{GFF}, \href{http://www.ensembl.org/info/website/upload/bed.html}{BED}, \href{http://www.ensembl.org/info/website/upload/wig.html}{WIG}, \href{http://genome.ucsc.edu/goldenpath/help/bigWig.html}{bigWig} and \href{http://genome.ucsc.edu/goldenpath/help/bedgraph.html}{bedGraph}. Additionally, \Biocpkg{rtracklayer} also provides functions to interact with genome browsers and in particular \href{http://genome.ucsc.edu/}{UCSC Genome Browser}. However, we do not illustrate these functionnalities here.\\
+
+First we get the path for some example files (from the \Biocpkg{Gviz} package):
+<<Path_to_ExampleFiles,cache=TRUE>>=
+bamExFile_path=system.file(package="Gviz","extdata","test.bam")
+gff3ExFile_path=system.file(package="Gviz","extdata","test.gff3")
+gtfExFile_path=system.file(package="Gviz","extdata","test.gff2")
+bedExFile_path=system.file(package="Gviz","extdata","test.bed")
+wigExFile_path=system.file(package="Gviz","extdata","test.wig")
+bedGraphExFile_path=system.file(package="Gviz","extdata","test.bedGraph")
+@
+\medskip
+
+The \Rfunction{import} and \Rfunction{export} functions of \Biocpkg{rtracklayer} will adapt to the different file formats via the \emph{format} argument. If this argument is missing the format is derived from the file extension. Here, we simply import these files using the \Rfunction{import} function without any other argument than the file path:
+<<rtracklayer_import>>=
+head(import(bedExFile_path))
+head(import(wigExFile_path)) #binned at 300bp
+Rle(rep(import(wigExFile_path)$score,each=300)) #convert to Rle
+@
+\bioccomment{Try to import the other files and see what you get. Also try to export files to different formats using the \Rfunction{export} function.}\\
+Note that a genome-wide coverage as an \Rclass{RleList} object can be directly exported as WIG or bedGraph files using the \Rfunction{export} function from \Biocpkg{rtracklayer}.
+\medskip
+
+%===================================
+\subsection{The \Biocpkg{AnnotationHub} package}
+%===================================
+<<AnnotationHub_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## The AnnotationHub package
+##--------- ##
+@
+The \Biocpkg{AnnotationHub} allows to easily retrieve a number of public datasets and annotation tracks as standard \Bioconductor{} objects such as \Rclass{GRanges} and \Rclass{GRangesList}. Note however that many datasets have been pre-processed so the user relies on others for these steps. The datasets available come from e.g.\ \href{http://www.ensembl.org/}{ENSEMBL}, \href{http://www.ncbi.nlm.nih.gov/}{NCBI}, \href{http://genome.ucsc.edu/}{UCSC}, \href{https://www.encodeproject.org/}{ENCODE} and \href{http://inparanoid.sbc.su.se/cgi-bin/index.cgi}{Inparanoid}). Here, we briefly illustrate the main commands used to retrieve results of interest.\\
+After loading the library, the user must create an \Rclass{AnnotationHub} object:
+<<AnnotationHub_lib2,eval=FALSE,echo=TRUE>>=
+library(AnnotationHub)
+@
+<<AnnotationHub_startSession,eval=TRUE,echo=TRUE,cache=TRUE>>=
+ah=AnnotationHub()
+@
+\medskip
+
+To explore this object we take a look at its metadata:
+<<AnnotationHub_Explore_ah,eval=TRUE,echo=TRUE,cache=TRUE>>=
+annot_ah=mcols(ah) #Informations on the different records
+table(annot_ah$rdataclass) #type of files that can be retrieved
+table(annot_ah$dataprovider) #providers
+@
+\medskip
+
+\Rclass{orgDb} objects are available in the hub:
+<<AnnotationHub_orgDb_example,eval=TRUE,echo=TRUE,cache=TRUE>>=
+query(ah,"orgDb") #search for available orgDb packages
+query(ah,c("orgDb","Arabidopsis")) #those for Arabidopsis only
+newAt=ah[["AH57965"]] #retrieve the orgDb object
+keytypes(newAt) #explore the object
+select(newAt,keys="AT1G01010",keytype="TAIR",columns=c("REFSEQ","ENTREZID","GO"))
+@
+Note that it is also possible to select resources from the Hub using \Rfunction{\textdollar},\Rfunction{subset} and \Rfunction{display}
+\medskip
+
+Another example with data from Roadmap Epigenomics project:
+<<AnnotationHub_EpigenomeRoadmap_example,eval=TRUE,echo=TRUE,cache=TRUE>>=
+epiFiles=query(ah,"EpigenomeRoadMap")
+epiFiles
+unique(epiFiles$species) # sanity check
+unique(epiFiles$genome) # sanity check
+table(epiFiles$sourcetype) #types of files available
+head(sort(table(epiFiles$description), decreasing=TRUE)) #more precise description of the files available
+query(ah , c("EpigenomeRoadMap","H3K36ME3","broadPeak","liver")) #a more precise query
+k36Peaks=ah[["AH29351"]] #retrieve the data
+k36Peaks # a GRanges object
+metadata(k36Peaks)
+@
+\medskip
+
+Another example with a chainfile: Lifting genomic coordinates from one genome build to another, requires a chain file. Here, we use the \Rfunction{liftOver} function from \Biocpkg{rtracklayer package} to perform the lift over and use the chain file obtained from AnnotationHub.
+<<AnnotationHub_LiftOver_example,eval=TRUE,echo=TRUE,cache=TRUE>>=
+query(ah,c("dm3","dm6","chainfile")) #search for a chain file
+chain=ah[["AH15105"]] #retrieve the chain file
+genes #Drosophila genes
+liftOver(genes,chain) #new coordinates
+@
+\medskip
+
+Versions of the hub can be accessed and selected using:
+<<AnnotationHub_versions,eval=TRUE,echo=TRUE,cache=TRUE>>=
+possibleDates(ah)[1:10] # available dates for the Hub
+snapshotDate(ah) #date currently in use (can be changed using <-)
+@
+
+The location of the downloaded files and the Hub URL are accessed using:
+<<AnnotationHub_cacheLocation>>=
+hubCache(ah)
+hubUrl(ah)
+@
+
+
+The AnnotationHub can also be explored more interactively in a browser using:
+<<AnnotationHub_FDisplay_ah,eval=FALSE,echo=TRUE>>=
+d=display(ah)
+@
+\medskip
+
+
+
+%===================================
+\subsection{The \Biocpkg{biomaRt} package}
+%===================================
+<<biomaRt_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## The biomaRt package
+##--------- ##
+@
+The \Biocpkg{biomaRt} package~\cite{pmid16082012,pmid19617889} provides an interface to the \href{http://www.biomart.org/}{Biomart} web services. The so-called "Marts" represent a large family of annotation resources:
+<<biomaRt_listMarts,eval=-1,cache=TRUE>>=
+library(biomaRt)
+listMarts(host="www.ensembl.org")
+@
+
+Now can select the source (or "Mart") we want to use: 
+<<biomaRt_selectMart,cache=TRUE>>=
+ens=useMart('ENSEMBL_MART_ENSEMBL',host='www.ensembl.org')
+ens
+listDatasets(ens)[1:5,]
+rattus=useMart('ENSEMBL_MART_ENSEMBL',
+               host='www.ensembl.org',
+               dataset='rnorvegicus_gene_ensembl')
+@
+
+Now we need to set up filters in order to get results focused on our objects of interest.
+<<biomaRt_GOI,cache=TRUE>>=
+head(keytypes(rattus)) #see also listFilters(rattus)
+head(columns(rattus)) #see also listAttributes(rattus)
+@
+
+To get all the values ('keys') taken by a specific filter ('keytype'), we can use:
+<<biomaRt_keysFUN,cache=TRUE>>=
+keys(rattus,keytype="chromosome_name")[1:5]
+@
+Unfortunately, the \Rfunction{keys} method does not work with all keytypes in \Biocpkg{biomaRt}.
+
+Once we know where to find the keys corresponding to our suject of interest, we use the \Rfunction{getBM} function to extract the information we selected:
+<<biomaRt_getBM,cache=TRUE>>=
+goi=c('ENSRNOG00000012586','ENSRNOG00000018113') #genes of interest
+getBM(attributes=c('ensembl_gene_id', 'strand',
+                   'chromosome_name','start_position','end_position'), 
+                    filters = 'ensembl_gene_id', 
+                    values = goi, mart = rattus)
+@
+Note that when \href{http://www.ensembl.org/}{ENSEMBL} is used as \Rclass{Mart}, other functions are available, such as \Rfunction{getSequence} and \Rfunction{getGene} which are wrappers to GetBM.
+
+The \Rfunction{select} method presented previously also works on \Rclass{Mart} objects:
+<<biomaRt_select,cache=TRUE>>=
+select(rattus,keys=goi,keytype='ensembl_gene_id',
+       columns=c('ensembl_gene_id', 'strand',
+                 'chromosome_name','start_position','end_position'))
+@
+The vignette of the \Biocpkg{biomaRt} provides several practical examples of queries to Biomart resources.
+
+%===================================
+\subsection{The \Biocpkg{GEOquery} and \Biocpkg{SRAdb} packages}
+%===================================
+<<GEOquery_SRAdb_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## The GEOquery and SRAdb packages
+##--------- ##
+@
+The \Biocpkg{GEOquery} package~\cite{pmid17496320} retrieves data from the Gene Expression Omnibus (\href{http://www.ncbi.nlm.nih.gov/geo/}{GEO}) repository and the \Biocpkg{SRAdb} package retrieves data from the Short Read Archive (\href{http://www.ncbi.nlm.nih.gov/sra}{SRA}) repository. These resources are of primary importance for functional genomics and contain thousands of datasets. \Biocpkg{SRAdb} also provides some functions to open and interact with the Integrative Genome Browser (\href{http://www.broadinstitute.org/igv/}{IGV}) which are not illustrated here.
+
+\paragraph{Extracting data from \href{http://www.ncbi.nlm.nih.gov/geo/}{GEO}.\\}
+In \href{http://www.ncbi.nlm.nih.gov/geo/}{GEO}, the data are organized as
+\begin{itemize}
+  \item Platforms (GPLxxx identifiers): info on microarray designs and sequencing platforms
+  \item Samples (GSMxxx identifiers): sample-level data and protocols
+  \item Series (GSExxx identifiers): data and information from a same experiment/project
+  \item Dataset (GDSxxx identifiers): statistically comparable data obtained from a unique platform
+\end{itemize}
+The \Biocpkg{GEOmetadb} package (not used here) aims at faciliating the search for relevant entries in the GEO database.
+
+To automatically download all the raw data from a GEO entry (files can be huge!) in a new folder created in your working directory, use:
+<<GEOquery_rawdataDownload,eval=FALSE,echo=TRUE>>=
+library(GEOquery)
+RawGSE13149=getGEOSuppFiles('GSE13149') #!! large files !!
+@
+
+The \Rfunction{getGEO} allows to retrieve different types of data from GEO (GPL, GSM, GSE, GDS). Here, for a Series, the data are downloaded to a temporary directory and stored in R as an \Rclass{ExpressionSet}.
+<<GEOquery_getFiles,eval=FALSE,echo=TRUE>>=
+gse13149=getGEO('GSE13149')
+show(gse13149) #Here only one Expression Set
+GEOeset=gse13149[[1]] #get the Expression Set
+@
+
+\Biocpkg{GEOquery} is essentially dedicated to microarray data. While \href{http://www.ncbi.nlm.nih.gov/geo/}{GEO} microarray datasets are imported as relevant \Rclass{ExpressionSet} and \Biocpkg{limma} \Rclass{MAList} objects, NGS data cannot be imported with \Biocpkg{GEOquery}. Note that the \Biocpkg{ChIPseeker} provides interesting functions to download bed files from ChIP-seq experiment directly from \href{http://www.ncbi.nlm.nih.gov/geo/}{GEO}.
+
+\paragraph{Extracting data from \href{http://www.ncbi.nlm.nih.gov/sra}{SRA}.\\}
+On the other hand, the \Biocpkg{SRAdb} package is dedicated to retrieve NGS datasets from the \href{http://www.ncbi.nlm.nih.gov/sra}{NCBI Short Read Archive}, many of which are also present in \href{http://www.ncbi.nlm.nih.gov/geo/}{GEO}.\\
+The data available in SRA are:
+\begin{itemize}
+  \item Studies (SRP/ERP/DRP identifiers): metadata describing a sequencing project or study
+  \item Experiment (SRX/ERX/DRX identifiers): metadata describing the libraries, platform selection and protocols used in a particular sequencing experiment. An experiment may contain several Runs.
+  \item Run (SRR/ERR/DRR identifiers): sequencing data for a particular sequencing experiment
+  \item Sample (SRS/ERS/DRS identifiers): metadata describing the physical sample that has been the suject of the sequencing process
+  \item Analysis (SRZ identifiers): A BAM file resulting from an analysis and the metadata describing the analysis performed
+\end{itemize}
+All these 5 types of objects are also regrouped in a virtual container called \emph{Accession} (SRA/ERA/DRA identifiers) which are used to track the submission.\\
+
+The \Biocpkg{SRAdb} provides an SRAdb SQLite file updated regularly which allows to query the database and find relevant content. The corresponding file can be downloaded and uncompressed using:
+<<SRAdb_getSRAdbFile,eval=FALSE>>=
+library(SRAdb)
+sqlfile = 'SRAmetadb.sqlite'
+if(!file.exists('SRAmetadb.sqlite')) sqlfile <<- getSRAdbFile() #large file!!
+@
+
+To create a connection to the file use:
+<<SRAdb_connect,eval=FALSE>>=
+sra_con = dbConnect(SQLite(),sqlfile)
+@
+
+Explore the content of the database:
+<<SRADb_exploreContent,eval=FALSE>>=
+dbListTables(sra_con) #Tables available in the database
+dbListFields(sra_con,"study") #Fields for the study table
+colDesc=colDescriptions(sra_con=sra_con) #Description of the fields
+@
+colDesc contains a description of the different fields and their default values.\\
+
+Query the database using SQL:
+<<SRADb_Query,eval=FALSE>>=
+rs = dbGetQuery(sra_con,"select * from study limit 3")
+rs[, 1:3]
+##   study_ID              study_alias study_accession
+## 1        1                DRP000001       DRP000001
+## 2        2                DRP000002       DRP000002
+## 3        3 DLD1_normoxia_nucleosome       DRP000003
+@
+More examples in the \Biocpkg{SRAdb} vignette.
+
+Convert SRA identifiers and get their links. For examples, which runs and samples are associated with this study?:
+<<SRADb_sraConvert,eval=FALSE>>=
+sraConvert( 'SRP001007', sra_con = sra_con )
+##       study submission    sample experiment       run
+## 1 SRP001007  SRA009276 SRS004650  SRX007396 SRR020740
+## 2 SRP001007  SRA009276 SRS004650  SRX007396 SRR020739
+@
+
+Queries with \Rfunction(getSRA):
+<<SRADb_getSRA,eval=FALSE>>=
+rs = getSRA( search_terms = "RNASeq", 
+              out_types = c('study'), sra_con )
+dim(rs)
+## [1] 1172   12
+head(rs[,1:2])
+##   study_alias     study
+## 1   DRP000366 DRP000366
+## 2   PRJDB2653 DRP000375
+## 3   PRJDB2395 DRP000376
+## 4   PRJDB2135 DRP000535
+## 5   PRJDB2122 DRP000536
+## 6   PRJDB2739 DRP000537
+@
+More examples in the \Biocpkg{SRAdb} vignette.
+
+The ftp adresses of the files can be obtained with:
+<<SRADb_listSRAfile,eval=FALSE>>=
+listSRAfile( c("SRX000122"), sra_con, fileType = 'sra' )
+#or: getSRAinfo("SRX000122",sra_con,sraType="sra")
+@
+The function \Rfunction{getSRAfile} allows to download SRA accessions from \href{http://www.ncbi.nlm.nih.gov/sra}{NCBI SRA} and Fastq files from \href{http://www.ebi.ac.uk/ena}{EBI ENA}.
+
+Disconnect from the database with:
+<<SRAdb_disconnect,eval=FALSE>>=
+dbDisconnect(sra_con)
+@
+
+%=====================================================================
+\section{Visualization of genomic data}
+%=====================================================================
+<<Visualization_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##---------------------------------------------------------##
+## Visualization of genomic data
+##---------------------------------------------------------##
+@
+
+<<Gviz_lib2,eval=FALSE,echo=FALSE>>=
+require(Gviz, quietly = T)
+@
+%===================================
+\subsection{Introduction to \R{} graphics for genomic data}
+%===================================
+<<Intro_visualization_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## Introduction to R graphics for genomic data
+##--------- ##
+@
+
+Visualizing NGS data in specific genomic context is an excellent, although not sufficient, mean to assess data quality or the robustness and specificity of findings obtained from data analysis. A number of \href{http://en.wikipedia.org/wiki/Genome_browser}{Genome Browsers} are available for this task, such as \href{http://genome.ucsc.edu/}{UCSC Genome Browser}, \href{http://gmod.org/wiki/GBrowse}{Gbrowse} or \href{http://www.broadinstitute.org/igv/}{IGV}. They allow to interactively 'navigate' the genome and to display several annotation and data types. However, batch extraction of genome views is not always available. Here, we briefly illustrate some tools available in \Bioconductor{} to assemble data in genome browser-like plots.
+
+\R{} is quite famous for the excellent quality of its graphics and its graphical capabilities in general (see \href{http://cran.r-project.org/web/views/Graphics.html}{CRAN Task view on graphics}). R base graphics  already provide a number of functionalities. The \CRANpkg{lattice} package has provided a complementary approach. Later, the \CRANpkg{ggplot2} package~\cite{Wickham_ggplot2_book} has implemented the concepts presented in the book 'The Grammar of Graphics'~\cite{Wilkinson_GrammarOfGraphics} and is now widely used (see an example at paragraph~\ref{sub:QC_on_FASTQ}). The \CRANpkg{ggvis} further adds interactivity and web graphics to \CRANpkg{ggplot2}.\\
+
+\medskip
+
+In \Bioconductor{} specific packages have been developed to plot genomic data and annotations (see \href{http://www.bioconductor.org/packages/release/BiocViews.html\#\_\_\_Visualization}{\Bioconductor{} Visualization View}), in particular:\\
+
+\begin{itemize}
+  \item \Biocpkg{Gviz} which is illustrated in paragraph~\ref{sub:Gviz_package}
+  \item \Biocpkg{ggbio}~\cite{pmid22937822} which extends \CRANpkg{ggplot2} to genomic data visualization
+  \item \Githubpkg{BIMSBbioinfo/genomation} which has some interesting functionalities to plot heatmaps and average profiles
+  \item \Biocpkg{Sushi}, which is particularly good to generate multipanel figures
+\end{itemize}
+
+Interactive graphs are increasingly being developped notably based on \Githubpkg{rstudio/shiny}.
+
+\bigskip
+
+
+%===================================
+\subsection{The \Biocpkg{Gviz} package} \label{sub:Gviz_package}
+%===================================
+<<Gviz package_title, eval=FALSE,echo=FALSE, message=FALSE>>=
+##----------##
+## The Gviz package
+##--------- ##
+@
+
+The \Biocpkg{Gviz} package vignette is extremely well documented. Here we only briefly illustrate some basic functionnalities but the package allows much more and protein-related tracks can also be added using the \Biocpkg{Pviz} package. \Biocpkg{Gviz} defines a set of classes which support a wide range of standard formats (see Table~\ref{tab:Gviz_tracks_formats}) and can be created from the typical \Bioconductor{} objects used for genomic data (see Table~\ref{tab:Gviz_tracks_BioCobjects}).
+
+\medskip
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{l|l|l|p{9.8cm}}
+  \hline
+  Gviz class        & File type  & Extension   & Details \\
+  \hline
+  Annotation Track  & BED        & .bed         & Fields \texttt{chrom}, \texttt{chromStart}, \texttt{chromEnd}, \texttt{strand}, \texttt{name} and \texttt{itemRbg} are used only (first 3 fields are mandatory)\\
+                    & GFF        & .gff, .gff1  & Fields \texttt{seqname}, \texttt{start}, \texttt{end}, \texttt{strand}, \texttt{feature} and \texttt{group} are recognized\\
+                    & GFF2       & .gff2        & Same as above. Feature grouping can be provided as \texttt{Group} or \texttt{Parent} attribute\\
+                    & GFF3       & .gff3        & Same as above but feature grouping information has to be provided as the \texttt{Parent} attribute\\
+                    & BAM        & .bam         & Streaming available. \texttt{Start}, \texttt{end} and \texttt{strand} information for the reads are used. Reads ids are used for track item grouping\\
+  \hline
+  GeneRegion Track  & GTF        & .gtf         & Gene, transcript and exon ids and names can be parsed from the \texttt{gene\_id}, \texttt{gene\_name}, \texttt{transcript\_id}, \texttt{transcript\_name}, \texttt{exon\_id} or \texttt{exon\_name attributes}\\
+                    & GFF        & .gff, .gff1  & Supports very limited grouping. Not adapted to encode complete gene models.\\
+                    & GFF2       & .gff2        & Same as GTF. Files could be renamed .gtf\\
+                    & GFF3       & .gff3        & The gene-to-transcript and transcript-to-exon relationships are encoded in the \texttt{parent} and \texttt{type} attribute. Most gff3 variants are supported.\\
+  \hline
+  DataTrack Track   & BedGraph   & .bedGraph \\
+                    & WIG        & .wig \\
+                    & BigWig     & .bigWig, .bw & Streaming available. \\
+                    & BAM        & .bam         & Streaming available. Read coverage only is extracted from the BAM file.\\
+  \hline
+  Sequence Track    & FASTA      & .fa, .fasta  & Streaming available only if an index file is found in the same directory as the fasta file.\\
+                    & 2Bit       & .2bit        & Streaming available.\\
+  \hline
+  Alignments Track  & BAM       & .bam          & Streaming available. Always needs an index file in the same directory as the BAM file\\
+  \hline
+\end{tabular}
+\protect \caption{\textbf{Gviz Track classes and standard NGS formats}} \label{tab:Gviz_tracks_formats}
+\end{center}
+\end{table}
+
+\medskip
+
+\begin{table}[!h]
+\begin{center}
+\begin{tabular}{l|l}
+  \hline
+  Gviz class        & \Bioconductor{} class \\
+  \hline
+  Annotation Track  & \Rclass{data.frame} \\
+                    & \Rclass{IRanges} \\
+                    & \Rclass{GRanges} \\
+                    & \Rclass{GRangesList} \\
+  \hline
+  GeneRegion Track  & \Rclass{data.frame} \\
+                    & \Rclass{IRanges} \\
+                    & \Rclass{GRanges} \\
+                    & \Rclass{GRangesList} \\
+                    & \Rclass{TxDb} \\
+  \hline
+  DataTrack Track   & \Rclass{data.frame} \\
+                    & \Rclass{IRanges} \\
+                    & \Rclass{GRanges} \\
+  \hline
+  Sequence Track   & \Rclass{DNAStringSet} \\
+                   & \Rclass{BSgenome} \\
+  \hline
+\end{tabular}
+\protect \caption{\textbf{Gviz Track classes and standard \Bioconductor{} objects}} \label{tab:Gviz_tracks_BioCobjects}
+\end{center}
+\end{table}
+
+\medskip
+
+
+The first step is to define the region we are interested in. We are going to focus on the region of Drosophila melanogaster chromosome 4 previously defined in paragraph~\ref{subsub:SingleEnd_Reads}. First we define a \Rclass{GRanges} object corresponding to this region:
+<<Gviz_ROI,cache=TRUE>>=
+ROI=GRanges(seqnames="chr4",ranges=which$chr4[1],strand="*")
+@
+
+Let's search for the motif 'TATAAA' in this region:
+<<Gviz_TATAAAgr,cache=TRUE>>=
+TATAAA_on_ROI=shift(union(ranges(matchPattern('TATAAA',
+                               subseq(Dmelanogaster$chr4,start=start(ROI),end=end(ROI)))),
+                 ranges(matchPattern('TTTATA',
+                              subseq(Dmelanogaster$chr4,start=start(ROI),end=end(ROI))))),
+                 start(ROI))
+TATAAAgr=GRanges(seqnames="chr4",
+                        ranges=TATAAA_on_ROI,
+                        strand="*")
+@
+
+From this \Rclass{GRanges} object, we can define an \Rclass{AnnotationTrack}:
+<<Gviz_AnnotationTrack,cache=TRUE>>=
+atrack=AnnotationTrack(TATAAAgr,name="TATAAA motif")
+@
+
+Next, we create a genome axis (i.e.\ genomic coordinates) track:
+<<Gviz_GenomeAxisTrack,cache=TRUE>>=
+gtrack=GenomeAxisTrack()
+@
+
+An ideogram of the chromosome can be downloaded from UCSC using:
+<<Gviz_IdeogramTrack,eval=FALSE,cache=TRUE>>=
+itrack=IdeogramTrack(genome="dm3",chromosome="chr4")
+#I'm having some unresolved issues with these ideograms so I don't use them below
+@
+
+Let's take a look at our plot at this point (Figure~\ref{fig:Gviz_gb1}):
+<<Gviz_gb1,fig.width=10, fig.height=4,out.width="0.7\\textwidth",fig.pos="!h",fig.align="center",fig.cap='Genome axis and TATAAA Annotationtracks.',cache=TRUE>>=
+plotTracks(list(gtrack,atrack)) #add itrack if possible
+@
+\medskip
+
+Then, we import Gene models from the \Biocannopkg{TxDb.Dmelanogaster.UCSC.dm3.ensGene} using:
+<<Gviz_GeneRegionTrack,cache=TRUE>>=
+grtrack=GeneRegionTrack(TxDb.Dmelanogaster.UCSC.dm3.ensGene,
+                        start=start(ROI),
+                        end=end(ROI),
+                        genome="dm3",chromosome="chr4",
+                        name="Gene Model")
+@
+
+and sequence information using \Biocannopkg{BS.genome.Dmelanogaster.UCSC.dm3}:
+<<Gviz_SequenceTrack,cache=TRUE>>=
+strack=SequenceTrack(Dmelanogaster, chromosome="chr4")
+@
+
+This gives Figure~\ref{fig:Gviz_gb2} where the sequence track is not visible (too small):
+<<Gviz_gb2,fig.width=10, fig.height=4,out.width="0.74\\textwidth",fig.pos="!h",fig.align="center",fig.cap='Visualizing Gene and Sequence Tracks',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,grtrack,strack))
+@
+
+We can zoom in and out using for example (Figure~\ref{fig:Gviz_gb3_zooms}):
+<<Gviz_gb3_zooms,fig.width=10, fig.height=4,fig.align="center",fig.pos="!h",out.width="0.74\\textwidth",fig.show='asis',fig.cap='Zomming in and out',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,grtrack),
+           extend.left = 0.5, extend.right = 10000)
+@
+or (Figure~\ref{fig:Gviz_gb3_zooms2}):
+<<Gviz_gb3_zooms2,fig.width=10, fig.height=4,fig.align="center",fig.pos="!h",out.width="0.74\\textwidth",fig.show='asis',fig.cap='Zomming in',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,strack),
+           from = 79900, to = 80100)
+@
+
+If we zoom enough we get the actual sequence (Figure~\ref{fig:Gviz_gb4_zoom}):
+<<Gviz_gb4_zoom,fig.width=8, fig.height=4,out.width="0.74\\textwidth",fig.align="center",fig.pos="!h",fig.cap='Zomming in some more to read the sequence',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,strack),
+           from = 79975, to = 80015)
+@
+
+Now we import some paired-end reads from a BAM file:
+<<Gviz_AlignmentsTrack,cache=TRUE>>=
+altrack=AlignmentsTrack(pr_bamFile, isPaired=TRUE)
+@
+\medskip
+
+And visualize these reads (Figure~\ref{fig:Gviz_gb5_reads}):
+<<Gviz_gb5_reads,fig.width=10,fig.height=5,fig.align="center",fig.pos="!h",out.width="0.72\\textwidth",fig.show='asis',fig.cap='Visualizing Alignment Tracks.',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,
+                grtrack,altrack)) #use type="coverage" to see only the coverage
+@
+
+\bigskip
+
+
+
+With a zoom and some more options (Figure~\ref{fig:Gviz_gb5_reads2}):
+<<Gviz_gb5_reads2,fig.width=10,fig.height=5,fig.align="center",fig.pos="!h",out.width="0.72\\textwidth",fig.show='asis',fig.cap='Visualizing Alignment Tracks.',cache=TRUE>>=
+plotTracks(list(gtrack,atrack,grtrack,altrack,strack),
+           from=72000,to=73500,
+           col.mates="purple",
+           col.gaps="orange")
+@
+\medskip
+
+\Biocpkg{Gviz} has lots of functionalities to plot quantitative data associated to genomic positions (\Rclass{DataTrack}). Here we provide a simple illustration based on simulated data:
+<<Gviz_DataTrack,cache=TRUE>>=
+set.seed(255)
+lim <- c(start(ROI), end(ROI))
+coords <- sort(c(lim[1], sample(seq(from=lim[1], to=lim[2]), 99), lim[2]))
+c1=runif(100, min=-10, max=8)
+c2=runif(100, min=-10, max=8)
+dat=GRanges(seqnames="chr4",strand="*",
+            ranges=IRanges(start=coords[-length(coords)], end=coords[-1]),
+            ctrol1=c1,ctrol2=c2,
+            treated1=c1+rnorm(100,3),
+            treated2=c2+rnorm(100,3))
+genome(dat)="dm3"
+dtrack <- DataTrack(dat,name="Uniform")
+@
+
+Which gives Figure~\ref{fig:Gviz_gb6_DataTrack}
+<<Gviz_gb6_DataTrack,fig.width=8, fig.height=5,fig.align="center",out.width="0.7\\textwidth",fig.pos="!h",fig.show='hold',fig.cap='Visualizing Data Tracks.',cache=TRUE>>=
+plotTracks(list(gtrack, atrack, grtrack, dtrack),
+           from=lim[1], to=lim[2], type=c("a","p"),
+           groups=rep(c("ctrol","treated"),each=2))
+@
+
+The \Biocpkg{Gviz} package offers many more functionalities that are well illustrated in the \href{http://www.bioconductor.org/packages/release/bioc/vignettes/Gviz/inst/doc/Gviz.pdf}{package vignette}. 
+
+\medskip
+%\fixme{Add example pipelines for RNA-seq and ChIP-seq}
+%Take a look at the following packages:
+%QuasR
+%subRead
+%rGADEM
+% For a ChIP-seq chapter, we could work on EcR ChIP-seq files: see eg:
+%http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE20000
+%http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM499657 (ChIP)
+%http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM499658 (input 1)
+%\fixme{Mention BioCParallel and GenomicFiles and cite the paper about Scalable Genomics}
+
+\pagebreak
+
+%=====================================================================
+\section{Session info}
+%=====================================================================
+<<SessionInfo,eval=TRUE,echo=FALSE,results="asis">>=
+toLatex(sessionInfo())
+@
+
+\nocite{*}
+\bibliography{BioC_for_NGS_PMartin}
+
+%Scrit extraction:
+%library(knitr)
+%fn="/DATA/WORK/Enseignement/Formation Agrocampus Fev 2015/BioC_for_NGS_PMartin.Rnw"
+%purl(fn,output="/DATA/WORK/Enseignement/Formation Agrocampus Fev 2015/BioC_for_NGS_PMartin_script.r")
+
+\end{document}

@@ -1,0 +1,46 @@
+#Rproject
+*.Rproj
+
+#intermediate tex file
+*.tex
+
+#output pdf file
+*.pdf
+
+# default Rproj
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Files related to latex project
+*.aux
+*.glo
+*.idx
+*.log
+*.toc
+*.ist
+*.acn
+*.acr
+*.alg
+*.bbl
+*.blg
+*.dvi
+*.glg
+*.gls
+*.ilg
+*.ind
+*.lof
+*.lot
+*.maf
+*.mtc
+*.mtc1
+*.out
+*.synctex.gz
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+# figure directory
+/figure/
