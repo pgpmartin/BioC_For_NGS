@@ -4,9 +4,6 @@
 #intermediate tex file
 *.tex
 
-#output pdf file
-*.pdf
-
 # default Rproj
 .Rproj.user
 .Rhistory
