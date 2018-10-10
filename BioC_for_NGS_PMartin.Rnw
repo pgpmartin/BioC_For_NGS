@@ -72,12 +72,13 @@ library(Gviz)
 %===================================
 
 \R{} is a language and environment for statistical computing and graphics. The latest news and updates can be found on the \href{http://www.r-project.org/}{\R{} website}. More than 6000 packages are available on the Comprehensive R Archive Network (\href{http://cran.r-project.org/mirrors.html}{CRAN}) to extend the functionalities of \R{}. \R{} is increasingly used in different fields, including life science~\cite{pmid25557714}. \\
-With more than 2000 packages, \Bioconductor{} is the largest project associated to \R{}. It is dedicated to bioinformatics~\cite{pmid15461798} and proposes 3 types of packages:
+With more than 2000 packages, \Bioconductor{} is the largest project associated to \R{}. It is dedicated to bioinformatics~\cite{pmid15461798} and proposes 4 types of packages:
 
 \begin{itemize}
   \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_Software}{Software packages} are classical \R{} packages containing new functions
   \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_AnnotationData}{Annotation Data packages} contain biological annotations wrapped in convenient \R{} objects
   \item \href{http://bioconductor.org/packages/release/BiocViews.html\#\_\_\_ExperimentData}{Experiment Data packages} contain Experimental data
+  \item \href{http://bioconductor.org/packages/release/BiocViews.html#___Workflow}{Workflow packages} were introduced more recently and contain examples of workflows based on \Bioconductor{} packages
 \end{itemize}
 
 The \href{http://bioconductor.org/}{\Bioconductor{} website} is a great resource to get the latest (frequent) updates and to find help and tutorials.\\
@@ -86,16 +87,16 @@ One of the most notable advantage of \R{} and \Bioconductor{} is the vast amount
 %===================================
 \subsection{Core and specialized packages}
 %===================================
-During the last decade, an enormous amount of work has been done by \Bioconductor{} developpers to provide efficient tools for the analysis of genomic data (see for example this excellent overview of the use of \Bioconductor{} in the context of genomic data~\cite{pmid25633503}).\\
+An enormous amount of work has been done by \Bioconductor{} developpers to provide efficient tools for the analysis of genomic data (see for example this excellent overview of the use of \Bioconductor{} in the context of genomic data~\cite{pmid25633503}).\\
 Some packages provide a core infrastructure for genomics by defining key classes / containers and the associated accessors. Others provide complete pipelines or integrated solutions for a general task. These packages allow to perform the main steps involved in the analysis of genomic data:
 
 \begin{itemize}
   \item Work with sequences and strings: \Biocpkg{Biostrings}, \Biocpkg{BSgenome} and BSgenome* annotation packages
   \item Manipulate raw FASTQ data files: \Biocpkg{ShortRead}
   \item Align reads on a reference: \Biocpkg{Rsubread}, \Biocpkg{QuasR}
-  \item Manipulate aligned reads: \Biocpkg{Rsamtools}, \Biocpkg{girafe}, \Biocpkg{GenomicAlignments}
+  \item Manipulate aligned reads: \Biocpkg{Rsamtools}, \Biocpkg{GenomicAlignments}
   \item Work with genomic ranges: \Biocpkg{IRanges}, \Biocpkg{GenomicRanges}
-  \item Acess annotations: \Biocpkg{AnnotationDbi}, \Biocpkg{OrganismDbi}, \Biocpkg{GenomicFeatures}, etc.
+  \item Access annotations: \Biocpkg{AnnotationDbi}, \Biocpkg{OrganismDbi}, \Biocpkg{GenomicFeatures}, etc.
   \item Importing/exporting tracks: \Biocpkg{rtracklayer}, \Biocpkg{AnnotationHub}, \Biocpkg{biomaRt}, etc.
   \item Visualize genomic data: \Biocpkg{ggbio}, \Biocpkg{Gviz}, \Biocpkg{Sushi}, etc.
 \end{itemize}
@@ -118,17 +119,17 @@ Other packages are more focused on specific applications, such as:
 \subsection{Content and usage of this document}
 %===================================
 
-This document presents an overview of the packages that I consider as the core packages to perform functional genomics studies with \Bioconductor{}. The chapters correspond to general tasks often performed in genomic studies and for each tasks the main functions from the core packages are illustrated. R code is easily recognized by the grey background and text outputs are color-coded and preceded by the \#\# symbols. There is a progression in the document and objects created in a chapter are often used in subsequent chapters. It is thus necessary to save your R session when you make a pause in the document:
+This document presents several packages that constitute the core \Bioconductor{} tools dedicated to the analysis of functional genomics data. The chapters correspond to general tasks commonly undertaken in genomic studies and for each task the main functions from the core packages are illustrated. `R code` is easily recognized by the grey background and text outputs are color-coded and preceded by the \#\# symbols. There is a progression in the document and objects created in a chapter are often used in subsequent chapters. It is thus necessary to save your R session when you make a pause in the document:
 <<SaveSession,eval=FALSE>>=
 save.image("MySession.RData")
 @
 and to load it back when you start again:
-<<LoadSession,,eval=FALSE>>=
+<<LoadSession,eval=FALSE>>=
 load("MySession.RData")
 @
 
-This document does not document core packages to perform genetic studies (SNPs, CNVs, GWAS, etc.) because I am less familiar with them. This might be a future development of this document.\\
-This document is largely inspired and borrrows a lot from the documents and vignettes written by others. I am grateful to them for sharing their knowledge and skills and I hope this document will help others as much as their documents have helped me.\\
+This document does not document core packages to perform genetic studies (i.e. analyze SNPs, CNVs, GWAS, etc.) because I am less familiar with them. This might be a future development of this document.\\
+This document is largely inspired and borrrows a lot from the documents, courses and vignettes written by others. I am grateful to them for sharing their knowledge and skills. I hope this document will also be useful to others and I invite the reader to embrace the attitude of sharing and respect that generally characterizes the \R{} and \Bioconductor{} community (\#rstats, @Bioconductor).\\
 
 
 %=====================================================================
@@ -213,9 +214,10 @@ The \Biocpkg{Rsamtools} package (presented in paragraph~\ref{sec:SAM_BAM_Files})
 library(Rsamtools)
 indFaEx_path=system.file("extdata","ce2dict1.fa",package="Rsamtools")
 indFaEx=FaFile(indFaEx_path)
-getSeq(indFaEx,GRanges(seqnames=Rle(c("pattern01","pattern04")),
-                       ranges=IRanges(start=c(3,10),end=c(10,24)),
-                       strand="*"))
+
+getSeq(indFaEx,
+       GRanges(c("pattern01:3-10",
+                 "pattern04:10-24")))
 @
 
 
@@ -251,14 +253,15 @@ library("BSgenome.Dmelanogaster.UCSC.dm3.masked")
 
 Activate/deactivate the masks:
 <<Mask_activate,cache=TRUE>>=
-maskedgenome=BSgenome.Dmelanogaster.UCSC.dm3.masked
-chrU=maskedgenome$chrU
-active(masks(chrU))=T #turn on all masks
-chrUmask=injectHardMask(chrU) #Effectively replaces the masked nucleotides by "+"
+maskedgenome <- BSgenome.Dmelanogaster.UCSC.dm3.masked #A MaskedBSgenome object
+chrU <- maskedgenome$chrU #A MaskedDNAString object
+active(masks(chrU)) #Only some masks are active
+active(masks(chrU)) <- TRUE #turn on all masks
+chrUmask=injectHardMask(chrU) #Replaces the masked nucleotides by "+"
 as(chrU,"XStringViews") #Get the unmasked regions
 @
 
-Hard masking influences the sequence we extract using \Rfunction{Views} (see paragraph~\ref{sub:Views}), soft masking des not:
+Hard masking changes the sequence itself while soft masking does not, as illustrated when extracting \Rfunction{Views} (see paragraph~\ref{sub:Views}):
 <<Mask_views,cache=TRUE>>=
 toString(Views(Dmelanogaster$chrU,start=1714848, width=12))
 toString(Views(chrU,start=1714848, width=12))
@@ -266,7 +269,7 @@ toString(Views(chrUmask,start=1714848, width=12))
 @
 
 
-Masks influence the results from the \Rfunction{matchPattern} function (see paragraph~\ref{sub:PatternMatch_SeqAlign} for details on this function):
+Some functions take the masks into account without requiring hard masking. For example \Rfunction{alphabetFrequency} or, as shown below, the \Rfunction{matchPattern} function (see paragraph~\ref{sub:PatternMatch_SeqAlign} for details on this function):
 <<Mask_matchPattern,cache=TRUE>>=
 length(matchPattern('GAGAGAGAGAGA',maskedgenome$chrU))
 length(matchPattern('GAGAGAGAGAGA',chrU))
@@ -288,7 +291,7 @@ length(matchPattern('GAGAGAGAGAGA',chrU))
 ##--------- ##
 @
 
-A number of bioinformatic pipelines heavily rely on sequence alignment and pattern matching. The alignment of NGS reads is often performed outside \R{}, using an NGS aligner such as \href{http://bio-bwa.sourceforge.net/}{BWA}~\cite{pmid20080505,pmid19451168}, \href{http://bowtie-bio.sourceforge.net/index.shtml}{Bowtie}/\href{http://bowtie-bio.sourceforge.net/bowtie2/index.shtml}{Bowtie2}~\cite{pmid19261174,pmid22388286} or a spliced read aligner such as \href{http://ccb.jhu.edu/software/tophat/index.shtml}{TopHat/TopHat2}~\cite{pmid19289445,pmid23618408} or \href{https://github.com/alexdobin/STAR}{STAR}~\cite{pmid23104886}. However, sequence alignment in \R{} can be used for example to refine reads pre-processing by searching for adapters and primers contaminations. Pattern matching is typically used in ChIP-seq experiment and in the analysis of transcription factor binding.\\
+A number of bioinformatic pipelines heavily rely on sequence alignment and pattern matching. The alignment of NGS reads is often performed outside \R{}, using an NGS aligner such as \href{http://bio-bwa.sourceforge.net/}{BWA}~\cite{pmid20080505,pmid19451168}, \href{http://bowtie-bio.sourceforge.net/index.shtml}{Bowtie}/\href{http://bowtie-bio.sourceforge.net/bowtie2/index.shtml}{Bowtie2}~\cite{pmid19261174,pmid22388286} or a spliced read aligner such as \href{https://ccb.jhu.edu/software/hisat2/index.shtml}{HiSat2}~\cite{pmid27560171,pmid25751142} or \href{https://github.com/alexdobin/STAR}{STAR}~\cite{pmid23104886}. However, sequence alignment in \R{} can be used for example to refine reads pre-processing by searching for adapters and primers contaminations. Pattern matching is also frequently used in ChIP-seq experiments to search e.g. for binding sites of transcription factors.\\
 
 %==============
 \subsubsection{Pattern matching}
@@ -306,7 +309,7 @@ Other packages of interest include \Biocpkg{TFBSTools}, \Biocpkg{MotIV}, \Biocpk
 \fixme{add a section on TFBSTools which has improved a lot in last version. Mention also motifbreakR PMID 26272984 for the impact of a SNP on a TF binding site}
 
 \paragraph{Searching and plotting motifs.\\}
-The \Biocpkg{MotifDb} package allows to query databases containg DNA motifs.
+The \Biocpkg{MotifDb} package allows to query databases containing DNA motifs.
 <<MotifDb_lib,eval=TRUE,echo=FALSE>>=
 require(MotifDb)
 @
@@ -580,10 +583,19 @@ See the 'pairwise alignment' vignette of \Biocpkg{Biostrings} for other utilitie
 Using substitution matrices based on evolutionary models (other matrices are available):
 <<pairwiseAlignment_protein,cache=TRUE>>=
 data(BLOSUM62)
-pairwiseAlignment(AAString("ALAKHLYDSYIKSFPLTKAKARAILTGKTTDKS"),
-  				AAString("AQQFNDIVCAMTQEDLEKFWKRCSRPFTAHM"),
-					substitutionMatrix = BLOSUM62)
+paln <- pairwiseAlignment(AAString("ALAKHLYDSYIKSFPLTKAKARAILTGKTTDKS"),
+                          AAString("AQQFNDIVCAMTQEDLEKFWKRCSRPFTAHM"),
+                          substitutionMatrix = BLOSUM62)
 @
+
+Visualizing the alignment with the DECIPHER package
+<<DECIPHER BrowseSeqs, eval=FALSE>>=
+library(DECIPHER)
+alnseqs <- c(aligned(pattern(paln)), aligned(subject(paln)))
+BrowseSeqs(alnseqs)
+@
+
+%\fixme{TODO : present functionalities of the DECIPHER package}
 
 \paragraph{Multiple alignment.\\}
 Several tools and algorithms are available to perform multiple sequence alignments (e.g.\ \href{http://multalin.toulouse.inra.fr/multalin/}{Multalin}, \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.ebi.ac.uk/Tools/msa/tcoffee/}{T-Coffee} or \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}). \Biocpkg{Biostrings} essentially allows to import and explore the resulting alignments. Examples are provided in the vignette of \Biocpkg{Biostrings} and \href{http://manuals.bioinformatics.ucr.edu/home/ht-seq#TOC-Multiple-Sequence-Alignments-MSAs-}{here}.

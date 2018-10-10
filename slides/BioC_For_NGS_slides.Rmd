@@ -1,0 +1,317 @@
+---
+title: "Introduction to R and Bioconductor for the analysis of NGS data"
+author: "Pascal Martin"
+date: "10 octobre 2018"
+output: 
+ slidy_presentation:
+     highlight: default
+     mathjax: "http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+     keep_md: true
+     css: BioC_For_NGS.css
+bibliography: BioC_For_NGS.bib
+nocite: |
+ @pmid10835600, @pmid29767702, @pmid25557714, @pmid15461798
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Outline
+
+ 1. What is NGS? Why BioC for NGS?
+ 2. Working with sequences
+ 3. Working with aligned reads
+ 4. Working with ranges
+ 5. Annotations
+ 6. Import / Export 
+ 7. Visualization
+
+## Outline
+ 1. What is NGS? Why BioC for NGS?
+ 2. <span style="color:grey">Working with sequences</span>
+ 3. <span style="color:grey">Working with aligned reads</span>
+ 4. <span style="color:grey">Working with ranges</span>
+ 5. <span style="color:grey">Annotations</span>
+ 6. <span style="color:grey">Import / Export</span>
+ 7. <span style="color:grey">Visualization</span>
+
+
+## NGS development
+<img src="figs/NGS_development.png" style="display: block; margin: auto;" />
+
+
+## NGS basics
+<img src="figs/watizNGS.png" style="display: block; margin: auto;" />
+
+
+## How does NGS work?
+Illumina sequencing: bridge PCR (illustrations from [atdbio](https://www.atdbio.com/content/58/Next-generation-sequencing))
+<img src="figs/bridging-pcr-large.png" style="display: block; margin: auto;" />
+
+
+## Illumina sequencing
+Illustrations from [NMBU](http://wiki.nmbu.org/index.php/Illumina_(Solexa)_sequencing)
+<img src="figs/IlluminaSequencing.png" style="display: block; margin: auto;" />
+
+
+## Other technologies?
+<img src="figs/SMRT_nanopore.png" style="display: block; margin: auto;" />
+
+
+## Increased throughput
+... and decreased prices
+<img src="figs/costpergenome_2017.jpg" style="display: block; margin: auto;" />
+
+
+## Bioconductor
+<img src="figs/BioCintro.png" style="display: block; margin: auto;" />
+
+
+## Bioconductor and the NGS workflow
+<img src="figs/NGSworkflow01.png" style="display: block; margin: auto;" />
+
+
+## Bioconductor and the NGS workflow
+<img src="figs/NGSworkflow02.png" style="display: block; margin: auto;" />
+
+
+## Specialized packages for about anything...
+* RNA-seq / Differential expression analysis:  
+    + <span style="color:chocolate">limma, DESeq2, edgeR, DEXseq, spliceR, rnaSeqMap, ...</span>
+* ChIP-seq / peak finding / annotation:
+    + <span style="color:chocolate">ChIPQC, chipseq, NarrowPeaks, DiffBind, MMDiff, epigenomix, jmosaics, csaw, ChIPseeker...</span>
+* DNA methylation / DMR:
+    + <span style="color:chocolate">bsseq, BiSeq, methylumi, minfi, Rnbeads, ...</span>
+* 3C/4C/Hi-C/ChIA-PET / genomic interactions:
+    + <span style="color:chocolate">r3Cseq, FourCSeq HiTC , GOTHiC, GenomicInterations, InteractionSet, ...</span>
+* CAGE-seq: <span style="color:chocolate;font-size:80%"><i>TSSi, CAGEr, ...</i></span>
+* DNAse-seq: <span style="color:chocolate;font-size:80%"><i>DNaseR, ...</i></span>
+* MNase-seq: <span style="color:chocolate;font-size:80%"><i>PING, ...</i></span>
+* ...   
+
+
+## Outline
+ 1. <span style="color:grey">What is NGS? Why BioC for NGS?</span>
+ 2. Working with sequences
+ 3. <span style="color:grey">Working with aligned reads</span>
+ 4. <span style="color:grey">Working with ranges</span>
+ 5. <span style="color:grey">Annotations</span>
+ 6. <span style="color:grey">Import / Export</span>
+ 7. <span style="color:grey">Visualization</span>
+
+## The fasta format
+<img src="figs/FastaFormat.png" style="display: block; margin: auto;" />
+
+* Extension: .fa; .fasta  
+<https://en.wikipedia.org/wiki/FASTA_format>
+
+
+## Biostrings containers and accessors
+```{r  warning=F,message=F}
+library(Biostrings)
+```
+
+**Containers:**  
+
+- XString – BString, DNAString, RNAString, AAString  
+- XStringSet – multiple sequences  
+- XStringViews  
+  
+*"Masked" sequences are also supported (see ?masks)*  
+  
+  
+
+**Manipulation:**  
+
+- [[ and [ for subsetting  
+- subseq
+- toString  
+- Views  
+...
+
+## Importing sequences from a fasta file
+```{r cache=T}
+dm3_upstream_filepath <- system.file("extdata","dm3_upstream2000.fa.gz",
+                                    package="Biostrings")
+dm3_upstream <- readDNAStringSet(dm3_upstream_filepath)
+dm3_upstream
+dm3_upstream[[5]]
+```
+
+
+## Working with your own DNA sequence  
+  
+Like `LETTERS` in base R, the [Biostrings](http://bioconductor.org/packages/release/bioc/html/Biostrings.html) package provides a `DNA_ALPHABET`.  
+  
+  
+- Use it to create a  `DNAString`  object containing a random sequence of length 50.
+- Get the reverse complement of this sequence
+- Calculate the frequency of each A, T, G and C in your sequence.
+- Calculate the GC% of your sequence
+- Extract the nucleotides between 11 and 20.
+- Convert the sequence to a character string
+- Extract the first 5 bases every 10 bases
+
+_Note that masks can also be associated to Biostrings and BSgenome objects_
+
+
+## Working with large fasta files
+The [Rsamtools](http://bioconductor.org/packages/release/bioc/html/Rsamtools.html) package provides function to work with large fasta file(s).  
+The <span style="color:blue">FaFile</span> function creates a reference to an indexed fasta file (see `?FaFile`).  
+
+This is particularly useful to extract sequences within a fasta file:
+
+```{r, cache=TRUE, warning=F, message=F}
+library(Rsamtools)
+fl <- system.file("extdata", "ce2dict1.fa", package="Rsamtools",
+                  mustWork=TRUE)
+fa <- open(FaFile(fl))
+seqinfo(fa)
+
+getSeq(fa, GRanges("pattern05:11-20"))
+```
+
+
+## Whole genome sequences in BSgenome packages
+```{r  warning=F,message=F}
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+```
+
+```{r cache=T}
+names(Dmelanogaster)[1:5]
+Dmelanogaster$chr2L
+```
+
+
+For a masked version of the genome, see:
+```{r eval=F}
+library(BSgenome.Dmelanogaster.UCSC.dm3.masked)
+```
+
+
+For adding SNPs info see:
+```{r eval=F}
+library(BSgenome)
+?available.SNPs
+```
+
+## Pattern matching
+<img src="figs/matchPatternFunctions.png" style="display: block; margin: auto;" />
+
+```{r cache=T}
+matchPattern("KATCGATA",dm3_upstream[[592]],fixed=F)
+```
+*K is G or T, see [IUPAC code](http://www.bioinformatics.org/sms/iupac.html)* 
+  
+Other functions to search for patterns: <span style="color:blue">matchProbePair, findPalindromes, ...</span>
+
+```{r eval=F}
+vmatchPattern('TATCGATA',Dmelanogaster)
+```
+
+## Position weight matrix (PWM)
+Probabilistic description of short sequences largely used for TF binding sites  
+```{r,echo=F,warning=F,message=F}
+library(MotifDb);library(seqLogo)
+```
+
+```{r cache=T}
+EcRMotif <- MotifDb::query(MotifDb,"EcR")[[1]]
+```
+
+seqLogo representation:  
+```{r echo=F,cache=T,fig.height=4,fig.width=5,fig.align='center'}
+seqLogo(reverseComplement(EcRMotif))
+```
+
+```{r warning=F,cache=T}
+EcRHits <- matchPWM(EcRMotif,Dmelanogaster$chr4)
+length(EcRHits)
+EcRHits[1:2]
+```
+
+Minus strand: use the <span style="color:blue">reverseComplement</span> of PWM
+
+## More sequence tools:
+
+**Other packages to work with motifs:**  
+- [MotifDb](http://bioconductor.org/packages/release/bioc/html/MotifDb.html)  
+- [seqLogo](http://bioconductor.org/packages/release/bioc/html/seqLogo.html)  
+- [PWMEnrich](http://bioconductor.org/packages/release/bioc/html/PWMEnrich.html)  
+- [TFBSTools](http://bioconductor.org/packages/release/bioc/html/TFBSTools.html)  
+- [rGADEM](http://bioconductor.org/packages/release/bioc/html/rGADEM.html)  
+- [BCRANK](http://bioconductor.org/packages/release/bioc/html/BCRANK.html)  
+- [MotIV](http://bioconductor.org/packages/release/bioc/html/MotIV.html)  
+- ...  
+
+**For database queries (+ other tools for AA sequences):**  
+[seqinr](https://cran.r-project.org/package=seqinr)  
+
+**Other functions:**
+```{r, cache=T}
+pairwiseAlignment('CTTGCAGTGGTGTATTCATAC',dm3_upstream[[1]],type='global-local')
+```
+
+
+
+## Fastq format
+* Extension: .fq; .fastq <https://en.wikipedia.org/wiki/FASTQ_format>
+
+<img src="figs/FastqFormat.png" style="display: block; margin: auto;" />  
+
+$Q = -10*{\log_{10}(P)}$ <=> $P = 10^{-\frac{Q}{10}}$
+
+
+## Working with fastq files
+The [ShortRead](http://bioconductor.org/packages/release/bioc/html/ShortRead.html) package <span class="citeref">[@pmid19654119]</span>
+```{r warning=F,message=F}
+library(ShortRead)
+```
+
+Import a fastq file with 20K reads:
+```{r cache=T}
+fq1_path <- system.file(package="ShortRead","extdata","E-MTAB-1147",
+                        "ERR127302_1_subset.fastq.gz")
+myFastq <- readFastq(fq1_path)
+```
+
+Explore with:
+```{r}
+myFastq
+myFastq[1:5]
+```
+
+----
+```{r}
+head(sread(myFastq), 2)
+head(quality(myFastq), 2)
+head(id(myFastq), 2)
+encoding(quality(myFastq))[seq(1,51,by=2)]
+alphabet(sread(myFastq))[1:4]
+```
+
+
+## Large fastq files
+Functions <span style="color:blue">FastqSampler</span> and <span style="color:blue">FastqStreamer</span>  
+Count the reads in a fastq file:
+```{r, cache=T}
+nr_myFastq <- 0
+strm <- FastqStreamer(fq1_path,1000)
+repeat {
+ ## Get FASTQ chunk:
+  fq <- yield(strm)
+  if (length(fq) == 0)
+   break
+ ## Do something on the chunk:
+  nr_myFastq <- nr_myFastq + length(fq)
+}
+close(strm) #close the connection
+nr_myFastq
+```
+
+
+
+## References {.referencePage}
+

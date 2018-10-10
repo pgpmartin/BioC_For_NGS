@@ -1,0 +1,15 @@
+#Rproject
+*.Rproj
+
+# default Rproj
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+# figure directory
+/figure/
