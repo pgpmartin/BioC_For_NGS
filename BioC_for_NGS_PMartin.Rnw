@@ -108,12 +108,14 @@ Other packages are more focused on specific applications, such as:
   \item RNA-seq and differential analysis: \Biocpkg{limma}, \Biocpkg{DESeq2}, \Biocpkg{edgeR}, \Biocpkg{DEXseq}, \Biocpkg{spliceR}, \Biocpkg{rnaSeqMap}, etc.
   \item ChIP-seq: \Biocpkg{ChIPQC}, \Biocpkg{chipseq}, \Biocpkg{NarrowPeaks}, \Biocpkg{DiffBind}, \Biocpkg{MMDiff}, \Biocpkg{epigenomix}, \Biocpkg{jmosaics}, etc.
   \item DNA methylation: \Biocpkg{bsseq}, \Biocpkg{BiSeq}, \Biocpkg{methylumi}, \Biocpkg{minfi}, \Biocpkg{Rnbeads}, etc.
+  \item ATAC-seq: \Biocpkg{ATACseqQC}, \Biocpkg{esATAC}, etc.
   \item CAGE-seq: \Biocpkg{TSSi}, \Biocpkg{CAGEr}, etc.
   \item DNAse-seq: \Biocpkg{DNaseR}, etc.
   \item MNase-seq: \Biocpkg{PING}, etc.
-  \item 3C/4C/Hi-C: \Biocpkg{r3Cseq}, \Biocpkg{FourCSeq}, \Biocpkg{HiTC}, \Biocpkg{GOTHiC}, \Biocpkg{GenomicInterations}, etc.
+  \item 3C/4C/Hi-C: \Biocpkg{r3Cseq}, \Biocpkg{FourCSeq}, \Biocpkg{HiTC}, \Biocpkg{InteractionSet}, \Biocpkg{GenomicInterations}, etc.
 \end{itemize}
 
+Some packages such as \Biocpkg{QuasR} or \Biocpkg{systemPipeR} aim at providing complete pipelines to be run from the \R{} environment.
 
 %===================================
 \subsection{Content and usage of this document}
@@ -269,7 +271,7 @@ toString(Views(chrUmask,start=1714848, width=12))
 @
 
 
-Some functions take the masks into account without requiring hard masking. For example \Rfunction{alphabetFrequency} or, as shown below, the \Rfunction{matchPattern} function (see paragraph~\ref{sub:PatternMatch_SeqAlign} for details on this function):
+Some functions take the masks into account without requiring hard masking. For example \Rfunction{alphabetFrequency} or, as shown below, the \Rfunction{matchPattern} function (see paragraph~\ref{sub:PatternMatch} for details on this function):
 <<Mask_matchPattern,cache=TRUE>>=
 length(matchPattern('GAGAGAGAGAGA',maskedgenome$chrU))
 length(matchPattern('GAGAGAGAGAGA',chrU))
@@ -283,7 +285,7 @@ length(matchPattern('GAGAGAGAGAGA',chrU))
 @
 
 %===================================
-\subsection{Pattern matching and sequence alignment} \label{sub:PatternMatch_SeqAlign}
+\subsection{Pattern matching} \label{sub:PatternMatch}
 %===================================
 <<PatternMatching_Alignment_title, eval=FALSE,echo=FALSE, message=FALSE>>=
 ##----------##
@@ -291,30 +293,30 @@ length(matchPattern('GAGAGAGAGAGA',chrU))
 ##--------- ##
 @
 
-A number of bioinformatic pipelines heavily rely on sequence alignment and pattern matching. The alignment of NGS reads is often performed outside \R{}, using an NGS aligner such as \href{http://bio-bwa.sourceforge.net/}{BWA}~\cite{pmid20080505,pmid19451168}, \href{http://bowtie-bio.sourceforge.net/index.shtml}{Bowtie}/\href{http://bowtie-bio.sourceforge.net/bowtie2/index.shtml}{Bowtie2}~\cite{pmid19261174,pmid22388286} or a spliced read aligner such as \href{https://ccb.jhu.edu/software/hisat2/index.shtml}{HiSat2}~\cite{pmid27560171,pmid25751142} or \href{https://github.com/alexdobin/STAR}{STAR}~\cite{pmid23104886}. However, sequence alignment in \R{} can be used for example to refine reads pre-processing by searching for adapters and primers contaminations. Pattern matching is also frequently used in ChIP-seq experiments to search e.g. for binding sites of transcription factors.\\
+Pattern matching is also frequently used in ChIP-seq experiments to search e.g. for binding sites of transcription factors.\\
 
-%==============
-\subsubsection{Pattern matching}
-%==============
 \href{http://en.wikipedia.org/wiki/Sequence_motif}{Sequence motifs} are typically used to represent the DNA regions bound by transcription factors and other regulatory proteins. There are several packages in \Bioconductor{} to search for and identify such patterns in strings and sequences. A complete \href{http://bioconductor.org/help/workflows/generegulation/}{\Bioconductor{} workflow} illustrates the use of pattern matching for the identification of transcription factor binding sites.\\
 Here, we will use the following additional packages:
 \begin{itemize}
   \item \Biocpkg{MotifDb}
   \item \Biocpkg{seqLogo}
   \item \Biocpkg{motifStack}
+  \item \Biocpkg{TFBSTools}
 \end{itemize}
-Other packages of interest include \Biocpkg{TFBSTools}, \Biocpkg{MotIV}, \Biocpkg{BCRANK}, \Biocpkg{motifRG} and \Biocpkg{rGADEM}.
+Other packages of interest include \Biocpkg{rGADEM}, \Biocpkg{TFBSTools}, \Biocpkg{MotIV}, \Biocpkg{BCRANK} and \Biocpkg{motifRG}.
 \medskip
 
 \fixme{add a section on TFBSTools which has improved a lot in last version. Mention also motifbreakR PMID 26272984 for the impact of a SNP on a TF binding site}
 
-\paragraph{Searching and plotting motifs.\\}
-The \Biocpkg{MotifDb} package allows to query databases containing DNA motifs.
+%==============
+\subsubsection{Searching and plotting motifs.}
+%==============
+The \Biocpkg{MotifDb} package allows to query different databases containing DNA motifs.
 <<MotifDb_lib,eval=TRUE,echo=FALSE>>=
 require(MotifDb)
 @
 
-Here, we search these databases for the response element of the ecdysone receptor (EcR):
+We search these databases for the response element of the ecdysone receptor (EcR):
 <<EcRmotif_query,cache=TRUE>>=
 EcRMotifs=MotifDb::query(MotifDb,"EcR")
 EcRMotifs
@@ -329,15 +331,15 @@ require(seqLogo,warn.conflicts = F, quietly = T)
 @
 Figure~\ref{fig:SeqLogo_Ecr} shows EcR motif:
 <<SeqLogo_Ecr,fig.cap="Sequence logo for EcR motif",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
-seqLogo(EcRMotifs[[1]])
+seqLogo::seqLogo(EcRMotifs[[1]])
 @
 Figure~\ref{fig:SeqLogo_Ecr_revcomp} its reverse complement:
 <<SeqLogo_Ecr_revcomp,fig.cap="Sequence logo for EcR motif reverse complement",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
-seqLogo(reverseComplement(EcRMotifs[[1]]))
+seqLogo::seqLogo(reverseComplement(EcRMotifs[[1]]))
 @
 And Figure~\ref{fig:SeqLogo_EcrUsp} the logo for the response element obtained from \href{http://jaspar.genereg.net/}{JASPAR}:
 <<SeqLogo_EcrUsp,fig.cap="Sequence logo for EcR:Usp heterodimer",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.6\\textwidth">>=
-seqLogo(EcRMotifs[[2]])
+seqLogo::seqLogo(EcRMotifs[[2]])
 @
 \medskip
 The second motif (from \href{http://jaspar.genereg.net/}{JASPAR}) represented in Figure \ref{fig:SeqLogo_EcrUsp} is a binding site for the heterodimer composed of the ecdysone receptor (EcR) and its binding partner Ultraspiracle protein (Usp). This imperfect palindromic ecdysone response element is an inverted repeat of the consensus motif AGGTCA separated by 1 nucleotide (IR1).
@@ -355,12 +357,24 @@ plot(new("pcm",
 @
 \medskip
 
-\paragraph{Scanning a sequence with a Position-weight matrix.\\}
-We select the JASPAR motif:
+
+%==============
+\subsubsection{Scanning a sequence with a Position-weight matrix.}
+%==============
+We select the JASPAR2014 motif:
 <<EcrJASP,cache=TRUE>>=
-EcrJASP=EcRMotifs[[grep("JASPAR_2014",names(EcRMotifs))]]
+EcrJASP <- EcRMotifs[[2]]
 @
- 
+
+\Biocpkg{MotifDb} returns a PFM with columns summing to 1. The number of sequences used to build the PFM are available in the \Rfunction{elementMetadata} of the object. We use this information to obtain a PWM
+<<EcRJASP_2PWM, cache=TRUE>>=
+nseq <- as.integer(elementMetadata(EcRMotifs[2])$sequenceCount)
+ecrpfm <- apply(round(nseq * EcrJASP,0), 2, as.integer)
+rownames(ecrpfm) <- rownames(EcrJASP)
+EcrJASP <- PWM(ecrpfm)
+@
+
+
 And search for this motif on both strands of chromosome 2L:
 <<warnOFF,eval=TRUE,echo=FALSE>>=
 options(warn=-1)
@@ -368,25 +382,90 @@ options(warn=-1)
 <<matchPWM_EcR_on2L,cache=TRUE>>=
 EcRJASP_2L=matchPWM(EcrJASP,
                     Dmelanogaster$chr2L,
-                    min.score='85%')
+                    min.score='90%')
 EcRJASP_2L_rev=matchPWM(reverseComplement(EcrJASP),
                         Dmelanogaster$chr2L,
-                        min.score='85%')
-EcRJASP_2L_all=Views(Dmelanogaster$chr2L,
-                     union(ranges(EcRJASP_2L),
-                           ranges(EcRJASP_2L_rev)))
-EcRJASP_2L_all
+                        min.score='90%')
+#One way to merge the results:
+EcRJASP_2L_all <- Views(Dmelanogaster$chr2L,
+                        union(ranges(EcRJASP_2L),
+                              ranges(EcRJASP_2L_rev)))
 @
 <<warnON,eval=TRUE,echo=FALSE>>=
 options(warn=0)
 @
 \medskip
 
-\fixme{mention that matchPWM also works on a BSgenome. It returns a GRanges of motif positions and scans the motif itself and ots reverse complement}
+We can use the \Rfunction{matchPWM} function to search a motif directly in a \Rfunction{BSgenome} object. In this case, the search is automatically done on both strands and the function returns a convenient \Rfunction{GRanges object} (see~\ref{subsec:GenomicRanges} below).
+<<matchPWM_EcR_all, cache=TRUE, warning=FALSE>>=
+EcRJASP_all <- matchPWM(EcrJASP, Dmelanogaster, min.score="90%")
+EcRJASP_all
+@
 
-\paragraph{Scanning a sequence with one string.\\}
 
-A pattern can also be represented as a character string possibly using the \href{http://www.bioinformatics.org/sms/iupac.html}{IUPAC ambiguity code}. Here, for simplicity, we will represent ambiguities as 'N'.\\
+%==============
+\subsubsection{TFBSTools}
+%==============
+TFBS stands for Transcription Factor Binding Site. The \Biocpkg{TFBSTools} package~\cite{pmid26794315} includes several features to manipulate and analyze sequence motifs or potential TFBS:
+\begin{itemize}
+  \item Containers for motifs (\Rfunction{XMatrix}), collections of motifs (\Rfunction{XMatrixList}), sets of motifs obtained with \href{http://meme-suite.org/}{MEME} (\Rfunction{MotifSet}) or from a motifSearch on a sequence (\Rfunction{SiteSet})
+  \item Containers and graphical representations of the most recent \href{http://cisreg.cmmt.ubc.ca/TFFM/doc/}{TFFM} (Transcription Factor Flexible Model) motif representations 
+  \item Functions to convert between PWM (position-weight matrix), PFM (position frequency matrix) and ICM (information content matrix) 
+  \item Functions to compare motifs as matrices (PFMs/PWMs) or with IUPAC strings
+  \item Functions to scan sequences or whole genome (\Rfunction{searchSeq}) and to scan aligned sequences (\Rfunction{searchAln}) or genomes (\Rfunction{searchPairBSgenome})
+  \item Functions to query the \href{http://jaspar.genereg.net/}{JASPAR} database, using \Bioconductor{} packages such as \Biocpkg{JASPAR2018}
+  \item Wrapper function for the de novo motif dicovery tool \href{http://meme-suite.org/}{MEME}
+\end{itemize}
+
+\medskip
+
+  \incfig[h]{fig/TFBSTools_package.png}{0.7\linewidth}{Common workflow and classes in \Biocpkg{TFBSTools}.}{Taken from the \href{https://www.ncbi.nlm.nih.gov/pubmed/26794315}{TFBSTools paper}}
+
+\medskip
+
+We search for the EcR:Usp binding motif in JASPAR2018 database:
+<<TFBSTools_JASPAR2018_lib, eval=TRUE, echo=FALSE, warning=FALSE, message=FALSE>>=
+library(TFBSTools)
+library(JASPAR2018)
+@
+
+<<EcR2018_fromJASPAR, cache=TRUE>>=
+EcR2018 <- TFBSTools::getMatrixByID(JASPAR2018, "MA0534")
+TFBSTools::seqLogo(toICM(EcR2018))
+@
+Figure~\ref{fig:SeqLogo_Ecr2018} shows EcR motif obtained from JASPAR2018:
+<<SeqLogo_Ecr2018,fig.cap="Sequence logo for EcR motif (JASPAR2018)",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
+TFBSTools::seqLogo(toICM(EcR2018))
+@
+
+Compare EcR PWM with the PWM for a human nuclear receptor ESR1, the Drosophila CTCF or a randomly permuted PWM
+<<>>=
+#hESR1:
+ESR1 <- TFBSTools::getMatrixByID(JASPAR2018, "MA0112")
+PWMSimilarity(toPWM(EcR2018), toPWM(ESR1), method = "Pearson")
+#dCTCF
+CTCF <- TFBSTools::getMatrixByID(JASPAR2018, "MA0531")
+PWMSimilarity(toPWM(EcR2018), toPWM(SREBP1), method = "Pearson")
+#random permutation:
+PWMSimilarity(toPWM(EcR2018), toPWM(permuteMatrix(EcR2018)), method = "Pearson")
+@
+
+Search for EcR motif on chr2L:
+<<Ecr2018_on2L, warning=FALSE>>=
+EcR2018_on2L <- searchSeq(toPWM(EcR2018), Dmelanogaster$chr2L, min.score="90%")
+@
+
+
+\Rfunction{searchPairBSgenome} is another interesting function that searches for a motif in regions that are conserved between 2 genomes given as \Robject{BSgenome}.
+
+
+%==============
+\subsubsection{Scanning sequences with strings.}
+%==============
+
+\paragraph{Scanning multiple sequences with one string.\\}
+
+A pattern or motif can also be represented as a character string possibly using the \href{http://www.bioinformatics.org/sms/iupac.html}{IUPAC ambiguity code}. Here, for simplicity, we will represent ambiguities as 'N'.\\
 
 To perform pattern matching, we define a consensus sequence for the IR1 ecdysone response element:
 <<EcR_IR1_cons,cache=TRUE>>=
@@ -395,9 +474,7 @@ EcR_IR1_cons
 EcR_IR1_cons=substring(EcR_IR1_cons,first=2)
 EcR_IR1_cons
 @
-Similarly, we can build consensus sequences for the EcR itself:
-%and for its binding partner Ultraspiracle (Usp)
-%Usp_cons=substring(consensusString(query(MotifDb,"Usp")[[5]],ambiguityMap="N"),first=1,last=7)
+Similarly, we can build consensus sequences for the EcR itself or for its binding partner Ultraspiracle (Usp):
 <<EcR_Usp_cons,cache=TRUE>>=
 EcR_cons=substring(consensusString(reverseComplement(EcRMotifs[[1]]),
                                    ambiguityMap="N"),
@@ -514,13 +591,34 @@ plot(as.integer(names(table(nMot8_perSeq))),
 @
 \medskip
 
-%==============
-\subsubsection{Sequence alignment}
-%==============
-The functions briefly presented here are not dedicated to the alignment of NGS reads but represent the main functions available in \Bioconductor{} to perform sequence alignment. These functions are well documented (including some examples on NGS data) in the vignettes of the \Biocpkg{Biostrings} package. 
 
-\paragraph{Pairwise alignment.\\}
+%==============
+\subsection{Sequence alignment} \label{sub:SeqAlign}
+%==============
+Sequence alignment is a common task in NGS bioinformatic pipelines. Most of the time, alignment of short or long reads is performed outside \R{}, using dedicated NGS aligner.\\
+
+Widely used short read aligners include:
+\begin{itemize}
+  \item \href{http://bio-bwa.sourceforge.net/}{BWA}~\cite{pmid20080505,pmid19451168}
+  \item \href{http://bowtie-bio.sourceforge.net/index.shtml}{Bowtie}/\href{http://bowtie-bio.sourceforge.net/bowtie2/index.shtml}{Bowtie2}~\cite{pmid19261174,pmid22388286}
+\end{itemize}
+
+Some aligners are also adapted to RNA-seq which often generates spliced reads:
+\begin{itemize}
+  \item \href{https://ccb.jhu.edu/software/hisat2/index.shtml}{HiSat2}~\cite{pmid27560171,pmid25751142}
+  \item \href{https://github.com/alexdobin/STAR}{STAR}~\cite{pmid23104886}
+  \item \href{http://subread.sourceforge.net/}{Subread}~\cite{pmid23558742}
+\end{itemize}
+
+There are \R{} packages that provide interfaces to some of these aligners, such as \Biocpkg{Rbowtie}, \Biocpkg{Rbowtie2}, \Biocpkg{QuasR} or \Biocpkg{Rsubread}.\\
+Here, we only briefly present classical sequence alignement tools available in \Bioconductor{}, mainly via the \Biocpkg{Biostrings} package (see the vignette of this package for further examples, including on NGS data). In NGS analysis, these tools can be used to search for adapters or primer sequences for example.
+
+%==============
+\subsubsection{Pairwise alignment.}
+%==============
+
 The main function \Rfunction{pairwiseAlignment} provides functionalities to perform global (\href{http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm}{Needleman–Wunsch}), local (\href{http://en.wikipedia.org/wiki/Smith-Waterman_algorithm}{Smith-Waterman}) and overlap (ends-free) pairwise alignments while tuning \emph{substitution scoring} and \emph{gap penalties}.\\
+
 Align the consensus ecdysone receptor response element to a region of chromosome 2L were such a motif is present:
 <<pairwiseAlignment_ex1,cache=TRUE>>=
 pairwiseAlignment(EcR_IR1_cons,
@@ -572,13 +670,25 @@ subject(paln)
 aligned(paln)
 Biostrings::score(paln)
 pid(paln) # percentage identity
-compareStrings(paln)
+compareStrings(paln) #symbolic representation of the alignment
 nedit(paln) #Levenshtein edit distance
-insertion(paln) 
+nmatch(paln) #also nmismatch(paln)
+insertion(paln)[[1]] #also deletion(paln) 
 Views(paln)
 coverage(paln)
 @
-See the 'pairwise alignment' vignette of \Biocpkg{Biostrings} for other utilities and accessors.
+See the 'pairwise alignment' vignette of \Biocpkg{Biostrings} for other utilities and accessors.\\
+
+The stringDist function computes the Levenshtein edit distance or pairwise alignment score for a set of strings:
+<<stringDist_Function, cache=TRUE>>=
+paln[1]
+nedit(paln[1])
+#Can also be obtained with:
+stringDist(c('GTGTCAATACGACAGCAATCTG', 
+             'GTGTGAATTACAGCAAATCTC'), 
+           method = "levenshtein")
+@
+
 
 Using substitution matrices based on evolutionary models (other matrices are available):
 <<pairwiseAlignment_protein,cache=TRUE>>=
@@ -597,7 +707,9 @@ BrowseSeqs(alnseqs)
 
 %\fixme{TODO : present functionalities of the DECIPHER package}
 
-\paragraph{Multiple alignment.\\}
+%==============
+\subsubsection{Multiple alignment.}
+%==============
 Several tools and algorithms are available to perform multiple sequence alignments (e.g.\ \href{http://multalin.toulouse.inra.fr/multalin/}{Multalin}, \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.ebi.ac.uk/Tools/msa/tcoffee/}{T-Coffee} or \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}). \Biocpkg{Biostrings} essentially allows to import and explore the resulting alignments. Examples are provided in the vignette of \Biocpkg{Biostrings} and \href{http://manuals.bioinformatics.ucr.edu/home/ht-seq#TOC-Multiple-Sequence-Alignments-MSAs-}{here}.
 
 \fixme{mention the msa BioC package, PMID 26315911}
@@ -1432,7 +1544,7 @@ require(GenomicAlignments, quietly = T)
 ##--------- ##
 @
 
-When a reference genome sequence is available, the reads are generally mapped to this reference using one of the NGS read aligner available (see paragraph~\ref{sub:PatternMatch_SeqAlign}). Note that R provides an interface to \href{http://bowtie-bio.sourceforge.net/index.shtml}{bowtie} and \href{http://web.stanford.edu/group/wonglab/SpliceMap/}{SpliceMap}~\cite{pmid20371516} aligners via the \Biocpkg{Rbowtie} package which is used in the pipeline of the \Biocpkg{QuasR} package. The \Biocpkg{Rsubread} package also provides a relatively complete pipeline for NGS data analysis. It includes a specific aligner (\href{http://subread.sourceforge.net/}{\emph{Subread}}) based on an original "seed-and-vote" mapping algorithm~\cite{pmid23558742} as well as tools to count (\emph{featureCounts}) the reads within genomic features~\cite{pmid24227677} and to map exon junctions from RNA-seq data.\\
+When a reference genome sequence is available, the reads are generally mapped to this reference using one of the NGS read aligner available (see paragraph~\ref{sub:SeqAlign}). Note that R provides an interface to \href{http://bowtie-bio.sourceforge.net/index.shtml}{bowtie} and \href{http://web.stanford.edu/group/wonglab/SpliceMap/}{SpliceMap}~\cite{pmid20371516} aligners via the \Biocpkg{Rbowtie} package which is used in the pipeline of the \Biocpkg{QuasR} package. The \Biocpkg{Rsubread} package also provides a relatively complete pipeline for NGS data analysis. It includes a specific aligner (\href{http://subread.sourceforge.net/}{\emph{Subread}}) based on an original "seed-and-vote" mapping algorithm~\cite{pmid23558742} as well as tools to count (\emph{featureCounts}) the reads within genomic features~\cite{pmid24227677} and to map exon junctions from RNA-seq data.\\
 
 Once aligned, the reads and their genomic coordinates (defined by chromosome, position and strand) are typically returned in a \href{http://samtools.github.io/}{SAM} file~\cite{pmid19505943}. A \href{http://samtools.github.io/hts-specs/SAMv1.pdf}{BAM} file contains the same information as the corresponding SAM file but BAM is a binary format and thus BAM file size is reduced and its content is not human-readable. These files are often manipulated with \href{http://www.htslib.org/}{Samtools}, \href{http://broadinstitute.github.io/picard/}{Picard Tools} and \href{https://www.python.org/}{Python} scripts. A nice explanation of what SAM/BAM files contain can be found \href{http://genome.sph.umich.edu/wiki/SAM}{here}.\\
 
