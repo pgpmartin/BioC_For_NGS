@@ -1,5 +1,5 @@
 ##-------------------------------
-## Ex01: Working with your own DNA sequence
+## Ex01: Practice with your own DNA sequence
 ##-------------------------------
 
 library(Biostrings)
@@ -26,8 +26,93 @@ as.character(myseq[11:20])
 
 Views(myseq, start=seq(1,50, by=10), width=5)
 
+
 ##-------------------------------
-## Ex02: Compare indexes
+## Ex02: Motif pipeline example
+##-------------------------------
+
+#Get a GRanges of peaks via AnnotationHub:
+library(AnnotationHub)
+library(rtracklayer)
+library(Biostrings)
+ah <- AnnotationHub()
+
+#get some files with peaks for CTCF in human HepG2 cells
+ctcfFiles <- query(ah, c("ENCODE", "hg19", "CTCF", "Hepg2", "narrowPeak"))
+# Available metadata
+colnames(mcols(ctcfFiles))
+
+AllctcfPeaks <- lapply(names(ctcfFiles),
+                       function(nn) ah[[nn]])
+AllctcfPeaks <- as(AllctcfPeaks,
+                   "GRangesList")
+
+#For each peak count the number of datasets in which a peak overlapping this peak appears
+NumOVL <- lapply(AllctcfPeaks,
+                 function(x) {countOverlaps(x, AllctcfPeaks)})
+#Number of peaks appearing in all 7 datasets:
+sapply(NumOVL, function(x){sum(x==7)})
+
+# Select the peaks "present" in all datasets
+SelectedPeaks <- unlist(
+                     as(mapply(function(peaks, ovl) {peaks[ovl==7]},
+                               AllctcfPeaks,
+                               NumOVL),
+                        "GRangesList"))
+
+# Reduce (we get ~34K peaks)
+SelectedPeaks <- reduce(SelectedPeaks)
+
+# To limit the computation time, we select only the peaks on the autosomes that are <250bp and resize them to 200bp
+## Note that it would be smarter to filter on the significance of the peaks (available in the initial GRanges)
+SelectedPeaks <- resize(SelectedPeaks[width(SelectedPeaks)<250],
+                        width=200, fix="center")
+SelectedPeaks <- SelectedPeaks[seqnames(SelectedPeaks) %in% paste0("chr",1:22)]
+#We get ~4500 peaks
+
+#Get the corresponding sequences
+library(BSgenome.Hsapiens.UCSC.hg19)
+SelSeq <- getSeq(Hsapiens, SelectedPeaks)
+
+# Use rGADEM to search for motifs (note that GADEM could use the score of ChIP-seq peaks: see ?GADEM)
+library(rGADEM)
+gadem <- GADEM(SelSeq, verbose=1, genome=Hsapiens) #using an unseeded analysis (!! very long !!)
+## The object is saved is /ex folder.
+## Import using: gadem <- readRDS("/ex/gadem.rds")
+
+#Take a look at the 6 motif founds
+consensus(gadem) #consensus motifs
+nOccurrences(gademObj) #Number of occurences of the 6 motifs in the sequences
+#get the PFMs:
+gadem_PFMs <- lapply(1:nMotifs(gadem),
+                     function(num){gadem@motifList[[num]]@pwm})
+names(gadem_PFMs) <- names(gadem)
+#convert them to motifStack pfm and plot:
+library(motifStack)
+gadem_pfm <- lapply(names(gadem_PFMs),
+                    function(x) {new("pfm",
+                                     mat=gadem_PFMs[[x]],
+                                     name = x)})
+motifStack(gadem_pfm)
+
+
+#We could use the GADEM seeded analysis in which we input a motif that is likely to be found but the computation is still very long:
+library(TFBSTools)
+library(JASPAR2018)
+#~ CTCF <- TFBSTools::getMatrixByID(JASPAR2018, "MA0531")
+#~ ctcf.pfm <- apply(Matrix(CTCF), 2 , as.numeric)
+#~ rownames(ctcf.pfm) <- rownames(Matrix(CTCF))
+#~ gademSeeded <- GADEM(SelSeq, verbose = 1, genome = Hsapiens, Spwm = list(ctcf.pfm))
+#~ saveRDS(gademSeeded, "/DATA/WORK/Enseignement/BioC_For_NGS/slides/ex/gademSeeded.rds")
+
+# Use MEME via TFBSTools (requires MEME to be installed)
+library(TFBSTools)
+#~ memeMotif <- runMEME(SelSeq, binary="meme", arguments=list("-nmotifs"=3))
+
+
+
+##-------------------------------
+## Ex03: Compare indexes
 ##-------------------------------
 
 library(Biostrings)

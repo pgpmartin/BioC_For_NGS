@@ -284,8 +284,9 @@ active(masks(chrU))['RM']=T #activate only RepeatMasker
 length(matchPattern('GAGAGAGAGAGA',chrU))
 @
 
+
 %===================================
-\subsection{Pattern matching} \label{sub:PatternMatch}
+\subsection{Motifs and pattern matching} \label{sub:PatternMatch}
 %===================================
 <<PatternMatching_Alignment_title, eval=FALSE,echo=FALSE, message=FALSE>>=
 ##----------##
@@ -293,25 +294,22 @@ length(matchPattern('GAGAGAGAGAGA',chrU))
 ##--------- ##
 @
 
-Pattern matching is also frequently used in ChIP-seq experiments to search e.g. for binding sites of transcription factors.\\
-
-\href{http://en.wikipedia.org/wiki/Sequence_motif}{Sequence motifs} are typically used to represent the DNA regions bound by transcription factors and other regulatory proteins. There are several packages in \Bioconductor{} to search for and identify such patterns in strings and sequences. A complete \href{http://bioconductor.org/help/workflows/generegulation/}{\Bioconductor{} workflow} illustrates the use of pattern matching for the identification of transcription factor binding sites.\\
-Here, we will use the following additional packages:
+\href{http://en.wikipedia.org/wiki/Sequence_motif}{Sequence motifs} or patterns are typically used to represent the DNA regions bound by transcription factors (TFs) and other regulatory proteins. There are several packages in \Bioconductor{} to search for and identify such patterns in strings and sequences. Pattern matching is frequently used in ChIP-seq experiments to search e.g. for binding sites of transcription factors. A complete \href{http://bioconductor.org/help/workflows/generegulation/}{\Bioconductor{} workflow} illustrates the use of pattern matching for the identification of transcription factor binding sites.\\
+Here, we illustrate the use of the following packages:
 \begin{itemize}
   \item \Biocpkg{MotifDb}
   \item \Biocpkg{seqLogo}
   \item \Biocpkg{motifStack}
   \item \Biocpkg{TFBSTools}
 \end{itemize}
-Other packages of interest include \Biocpkg{rGADEM}, \Biocpkg{TFBSTools}, \Biocpkg{MotIV}, \Biocpkg{BCRANK} and \Biocpkg{motifRG}.
+Other packages of interest include \Biocpkg{rGADEM}, \Biocpkg{BCRANK} and \Biocpkg{motifRG} for de novo motif discovery, \Biocpkg{MotIV} to compare motifs to databases such as \href{http://jaspar.genereg.net/}{JASPAR} or \Biocpkg{motifbreakR} to evaluate the impact of SNPs on TF binding sites.
 \medskip
 
-\fixme{add a section on TFBSTools which has improved a lot in last version. Mention also motifbreakR PMID 26272984 for the impact of a SNP on a TF binding site}
 
 %==============
 \subsubsection{Searching and plotting motifs.}
 %==============
-The \Biocpkg{MotifDb} package allows to query different databases containing DNA motifs.
+The \Biocpkg{MotifDb} package allows to query a collection of DNA motifs aggregated from different databases.
 <<MotifDb_lib,eval=TRUE,echo=FALSE>>=
 require(MotifDb)
 @
@@ -322,7 +320,8 @@ EcRMotifs=MotifDb::query(MotifDb,"EcR")
 EcRMotifs
 EcRMotifs[[1]]
 @
-The motif is represented as a \href{http://en.wikipedia.org/wiki/Position_weight_matrix}{Position-weight matrix}
+The motif is given as a Position Frequency Matrix (PFM), which, can be converted to a \href{http://en.wikipedia.org/wiki/Position_weight_matrix}{Position-weight matrix} using the information present in the metadata of the object (number of sequences used to define the motif: see \Rfunction{elementMetadata}).
+
 \medskip
 
 The package \Biocpkg{seqLogo} allows to easily plot \href{http://en.wikipedia.org/wiki/Sequence_logo}{sequence logos}:
@@ -345,15 +344,18 @@ seqLogo::seqLogo(EcRMotifs[[2]])
 The second motif (from \href{http://jaspar.genereg.net/}{JASPAR}) represented in Figure \ref{fig:SeqLogo_EcrUsp} is a binding site for the heterodimer composed of the ecdysone receptor (EcR) and its binding partner Ultraspiracle protein (Usp). This imperfect palindromic ecdysone response element is an inverted repeat of the consensus motif AGGTCA separated by 1 nucleotide (IR1).
 \medskip
 
-The package \Biocpkg{motifStack} provides additional plotting functionalities for sequence logos as shown in Figure~\ref{fig:motifStack_Ecr}:
+The package \Biocpkg{motifStack} provides additional plotting functionalities to plot multiple sequence logos, as illustrated in Figure~\ref{fig:motifStack_Ecr}:
 <<motifStack_Ecr,fig.cap="Sequence logos for EcR motifs using motifStack",fig.align="center",fig.width=6, fig.height=6,fig.pos="!h",out.width="0.6\\textwidth">>=
-par(mfrow=c(2,1))
-plot(new("pcm",
-         as.matrix(reverseComplement(EcRMotifs[[1]])),
-         name="EcR_FlyFactorSurvey"))
-plot(new("pcm",
-         as.matrix(reverseComplement(EcRMotifs[[2]])),
-         name="EcR_JASPAR"))
+#Format the PFMs:
+pfms <- as.list(EcRMotifs)
+names(pfms) <- gsub("Dmelanogaster-", "", names(pfms))
+pfms <- lapply(names(pfms),
+               function(x) {new("pfm",
+                                mat=pfms[[x]],
+                                name = x)})
+
+#Plot
+motifStack(pfms, layout="tree")
 @
 \medskip
 
@@ -361,21 +363,31 @@ plot(new("pcm",
 %==============
 \subsubsection{Scanning a sequence with a Position-weight matrix.}
 %==============
+A Position weight matrix (PWM) can be used to scan one or multiple "subject" sequences to search the location of the corresponding motif. At each position, the "subject" sequence is given a score based on the values present in the PWM.
+
+\medskip
+
+  \incfig[h]{fig/pwm_scores.png}{0.7\linewidth}{Principle of sequence scoring with a PWM}
+
+\medskip
+
+
 We select the JASPAR2014 motif:
 <<EcrJASP,cache=TRUE>>=
 EcrJASP <- EcRMotifs[[2]]
 @
 
-\Biocpkg{MotifDb} returns a PFM with columns summing to 1. The number of sequences used to build the PFM are available in the \Rfunction{elementMetadata} of the object. We use this information to obtain a PWM
+\Biocpkg{MotifDb} returns a PFM with columns summing to 1. The number of sequences used to build the PFM are available in the \Rfunction{elementMetadata} or \Rfunction{mcols} of the object. We use this information to obtain a PWM
 <<EcRJASP_2PWM, cache=TRUE>>=
-nseq <- as.integer(elementMetadata(EcRMotifs[2])$sequenceCount)
+nseq <- as.integer(mcols(EcRMotifs[2])$sequenceCount)
 ecrpfm <- apply(round(nseq * EcrJASP,0), 2, as.integer)
 rownames(ecrpfm) <- rownames(EcrJASP)
 EcrJASP <- PWM(ecrpfm)
 @
+Here, we use the default background nucleotide frequencies (25\% for each A, T, G and C) but this should be adapted depending on the genome studied.
 
 
-And search for this motif on both strands of chromosome 2L:
+Search for this motif on both strands of chromosome 2L:
 <<warnOFF,eval=TRUE,echo=FALSE>>=
 options(warn=-1)
 @
@@ -431,7 +443,6 @@ library(JASPAR2018)
 
 <<EcR2018_fromJASPAR, cache=TRUE>>=
 EcR2018 <- TFBSTools::getMatrixByID(JASPAR2018, "MA0534")
-TFBSTools::seqLogo(toICM(EcR2018))
 @
 Figure~\ref{fig:SeqLogo_Ecr2018} shows EcR motif obtained from JASPAR2018:
 <<SeqLogo_Ecr2018,fig.cap="Sequence logo for EcR motif (JASPAR2018)",fig.align="center",fig.width=6, fig.height=3,fig.pos="!h",out.width="0.5\\textwidth">>=
@@ -445,7 +456,7 @@ ESR1 <- TFBSTools::getMatrixByID(JASPAR2018, "MA0112")
 PWMSimilarity(toPWM(EcR2018), toPWM(ESR1), method = "Pearson")
 #dCTCF
 CTCF <- TFBSTools::getMatrixByID(JASPAR2018, "MA0531")
-PWMSimilarity(toPWM(EcR2018), toPWM(SREBP1), method = "Pearson")
+PWMSimilarity(toPWM(EcR2018), toPWM(CTCF), method = "Pearson")
 #random permutation:
 PWMSimilarity(toPWM(EcR2018), toPWM(permuteMatrix(EcR2018)), method = "Pearson")
 @
@@ -456,7 +467,8 @@ EcR2018_on2L <- searchSeq(toPWM(EcR2018), Dmelanogaster$chr2L, min.score="90%")
 @
 
 
-\Rfunction{searchPairBSgenome} is another interesting function that searches for a motif in regions that are conserved between 2 genomes given as \Robject{BSgenome}.
+\Rfunction{searchPairBSgenome} is another interesting function that searches for a motif in regions that are conserved between 2 genomes given as \Robject{BSgenome}. \\
+
 
 
 %==============
@@ -705,14 +717,22 @@ alnseqs <- c(aligned(pattern(paln)), aligned(subject(paln)))
 BrowseSeqs(alnseqs)
 @
 
-%\fixme{TODO : present functionalities of the DECIPHER package}
+The \Biocpkg{DECIPHER} package contains numerous functions that make use of \Biocpkg{Biostrings} architecture to perform basic or advanced tasks with sequences including: 
+\begin{itemize}
+  \item Manipulate and analyze sequences
+  \item Perform multiple sequence alignment (incl. on translated sequences)
+  \item Compare and classify sequences
+  \item Align whole genomes and find synteny
+  \item design PCR primers, FISH probes or oligo for microarrays
+\end{itemize}
+%\fixme{TODO : Illustrate functionalities of the DECIPHER package}
 
 %==============
 \subsubsection{Multiple alignment.}
 %==============
-Several tools and algorithms are available to perform multiple sequence alignments (e.g.\ \href{http://multalin.toulouse.inra.fr/multalin/}{Multalin}, \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.ebi.ac.uk/Tools/msa/tcoffee/}{T-Coffee} or \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}). \Biocpkg{Biostrings} essentially allows to import and explore the resulting alignments. Examples are provided in the vignette of \Biocpkg{Biostrings} and \href{http://manuals.bioinformatics.ucr.edu/home/ht-seq#TOC-Multiple-Sequence-Alignments-MSAs-}{here}.
-
-\fixme{mention the msa BioC package, PMID 26315911}
+Several tools and algorithms are available to perform multiple sequence alignments (e.g.\ \href{http://multalin.toulouse.inra.fr/multalin/}{Multalin}, \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.ebi.ac.uk/Tools/msa/tcoffee/}{T-Coffee} or \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}).\\
+The \Biocpkg{Biostrings} package essentially allows to import and explore the alignments obtained with different tools. Examples are provided in the vignette of \Biocpkg{Biostrings} and \href{http://manuals.bioinformatics.ucr.edu/home/ht-seq#TOC-Multiple-Sequence-Alignments-MSAs-}{here}.\\
+Additionally, the \Biocpkg{msa} package~\cite{pmid26315911} provides access, from within \R{}, to the popular multiple alignment tools \href{http://www.ebi.ac.uk/Tools/msa/clustalw2/}{ClustalW}, \href{http://www.clustal.org/omega/}{ClustalOmega} and \href{http://www.ebi.ac.uk/Tools/msa/muscle/}{MUSCLE}.
 
 
 %=====================================================================

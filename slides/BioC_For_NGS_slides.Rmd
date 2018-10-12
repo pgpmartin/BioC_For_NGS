@@ -15,6 +15,7 @@ nocite: |
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(kableExtra)
 ```
 
 
@@ -27,6 +28,7 @@ knitr::opts_chunk$set(echo = TRUE)
  5. Annotations
  6. Import / Export 
  7. Visualization
+
 
 # Outline
  1. What is NGS? Why BioC for NGS?
@@ -140,7 +142,7 @@ dm3_upstream[[5]]
 ```
 
 
-# Working with your own DNA sequence  
+# Practice with your own DNA sequence  
   
 Like `LETTERS` in base R, the [Biostrings](http://bioconductor.org/packages/release/bioc/html/Biostrings.html) package provides a `DNA_ALPHABET`.  
   
@@ -196,6 +198,7 @@ library(BSgenome)
 ?available.SNPs
 ```
 
+
 # Pattern matching
 <img src="figs/matchPatternFunctions.png" style="display: block; margin: auto;" />
 
@@ -215,22 +218,46 @@ Probabilistic description of short sequences largely used for TF binding sites
 ```{r,echo=F,warning=F,message=F}
 library(MotifDb);library(seqLogo)
 ```
-Get a motif:
+Get a motif (as a PFM):
 ```{r cache=T}
 EcRMotif <- MotifDb::query(MotifDb,"EcR")[1]
 ```
 
+<div class="col2-left">
 seqLogo representation:  
-```{r echo=F,cache=T,fig.height=4,fig.width=5,fig.align='center'}
+```{r echo=F,cache=T,fig.height=4,fig.width=6,fig.align='center'}
 seqLogo::seqLogo(reverseComplement(EcRMotif[[1]]))
 ```
-Convert to PWM:
+  
+</div>
+
+<div class="col2-right">
+  Convert to PWM:
 ```{r}
-EcRpfm <- apply(EcRMotif[[1]] * as.integer(elementMetadata(EcRMotif)$sequenceCount),
+EcRpfm <- apply(reverseComplement(EcRMotif[[1]]) *
+                    as.integer(mcols(EcRMotif)$sequenceCount),
                 2, as.integer)
 rownames(EcRpfm) <- rownames(EcRMotif[[1]])
 EcRpwm <- PWM(EcRpfm)
 ```
+
+```{r, echo=FALSE}
+knitr::kable(EcRpwm,
+             digits = rep(2,8),
+             caption="PWM for EcR motif") %>%
+    kable_styling(bootstrap_options = c("striped","condensed"),
+                  full_width = FALSE,
+                  font_size=14, position="center")
+```
+</div>
+
+
+# Scanning a sequence with a PWM
+
+<img src="figs/pwm_scores.png" style="display: block; margin: auto;" />
+
+
+# Scanning a sequence with a PWM
 
 Search the motif in chr4 ('+' strand only):
 ```{r warning=F,cache=T}
@@ -238,7 +265,6 @@ EcRHits <- matchPWM(EcRpwm, Dmelanogaster$chr4)
 length(EcRHits)
 EcRHits[1:2]
 ```
-
 For minus strand: use the <span style="color:blue">reverseComplement</span> of PWM
 
 # Motif pipeline example
@@ -246,11 +272,11 @@ A typical pipeline:
   
 - Find a set of ChIP-seq peaks for a TF as a bed file (eg. [ENCODE](https://www.encodeproject.org/) or [modENCODE](http://www.modencode.org/).  
   
-- Use a de novo motif search to identify enriched motifs (e.g. [RSAT](http://pedagogix-tagc.univ-mrs.fr/rsat/RSAT_portal.html), [MEME](http://meme-suite.org/), [BaMM motif](https://bammmotif.mpibpc.mpg.de/), R [BCRANK](http://bioconductor.org/packages/release/bioc/html/BCRANK.html))  
+- Use a de novo motif search to identify enriched motifs (e.g. [RSAT](http://pedagogix-tagc.univ-mrs.fr/rsat/RSAT_portal.html), [MEME](http://meme-suite.org/), [BaMM motif](https://bammmotif.mpibpc.mpg.de/), R packages [rGADEM](http://bioconductor.org/packages/release/bioc/html/rGADEM.html) or [BCRANK](http://bioconductor.org/packages/release/bioc/html/BCRANK.html))  
   
-- Get a PFM or PWM from the results  
+- Get a PFM or PWM from the results. Convert as PWM if necessary.
   
-- Scan the genome with this PWM  
+- Scan the genome with the PWM (background frequencies!) 
   
 - Annotate the identified motif location (TSS? enhancers? near specific groups of genes? etc.)  
   
@@ -261,9 +287,9 @@ A typical pipeline:
 **Other packages to work with motifs:**  
 - [MotifDb](http://bioconductor.org/packages/release/bioc/html/MotifDb.html)  
 - [seqLogo](http://bioconductor.org/packages/release/bioc/html/seqLogo.html)  
-- [PWMEnrich](http://bioconductor.org/packages/release/bioc/html/PWMEnrich.html)  
 - [TFBSTools](http://bioconductor.org/packages/release/bioc/html/TFBSTools.html)  
 - [rGADEM](http://bioconductor.org/packages/release/bioc/html/rGADEM.html)  
+- [PWMEnrich](http://bioconductor.org/packages/release/bioc/html/PWMEnrich.html)  
 - [BCRANK](http://bioconductor.org/packages/release/bioc/html/BCRANK.html)  
 - [MotIV](http://bioconductor.org/packages/release/bioc/html/MotIV.html)  
 - ...  
@@ -311,7 +337,7 @@ $Q = -10*{\log_{10}(P)}$ <=> $P = 10^{-\frac{Q}{10}}$
 
 # Working with fastq files
 The [ShortRead](http://bioconductor.org/packages/release/bioc/html/ShortRead.html) package <span class="citeref">[@pmid19654119]</span>
-```{r warning=F,message=F}
+```{r echo=FALSE, warning=F,message=F}
 library(ShortRead)
 ```
 
@@ -325,10 +351,11 @@ myFastq <- readFastq(fq1_path)
 Explore with:
 ```{r}
 myFastq
-myFastq[1:5]
+myFastq[1:3]
 ```
 
-----
+
+# Working with fastq files
 ```{r}
 head(sread(myFastq), 2)
 head(quality(myFastq), 2)
@@ -362,6 +389,27 @@ nr_myFastq
 
 Several tools available in R/BioC: [ShortRead](http://bioconductor.org/packages/release/bioc/html/ShortRead.html) <span style="color:blue">qa</span>/<span style="color:blue">qa2</span> functions, [qrqc](http://bioconductor.org/packages/release/bioc/html/qrqc.html), [seqTools](http://bioconductor.org/packages/release/bioc/html/seqTools.html), [Rqc](http://bioconductor.org/packages/release/bioc/html/Rqc.html)  
 
+Run `library(Rqc)` on a fastq file:
+```{r cache=T}
+rqcResultSet <- rqcQA(fq1_path, sample=TRUE)
+```
+  
+<div class="col2-left">  
+  
+```{r cache=T, warning=F, out.width="500px", out.height="350px", fig.align='center'}
+rqcCycleQualityPlot(rqcResultSet)
+```
+  
+</div>
+  
+<div class="col2-right">  
+  
+```{r cache=T, warning=F, out.width="500px", out.height="350px", fig.align='center'}
+rqcCycleBaseCallsLinePlot(rqcResultSet)
+```
+  
+</div>
+
 
 # Filtering a fastq file
 
@@ -373,6 +421,8 @@ goodq <- srFilter(function(x){apply(as(quality(x),"matrix"),
                  name="MedianQualityAbove30")
 myFilter <- compose(max1N,goodq) #combine filters
 ```
+
+# Filtering a fastq file
 
 Create a function to filter and trim the reads:
 ```{r cache=T}
@@ -395,8 +445,6 @@ FilterAndTrim <- function(fl,destination=sprintf("%s_filtered",fl))
 }
 ```
 
-----
-
 Apply the function:
 ```{r eval=F}
 FilterAndTrim(fqFiles[1],
@@ -415,7 +463,7 @@ FilterAndTrim(fqFiles[1],
 
 
 # Alignment of NGS reads
-R packages: [Rbowtie](http://bioconductor.org/packages/release/bioc/html/Rbowtie.html), [QuasR](http://bioconductor.org/packages/release/bioc/html/QuasR.html) <span class="citeref">[@pmid25417205]</span>, [Rsubread](http://bioconductor.org/packages/release/bioc/html/Rsubread.html) <span class="citeref">[@pmid23558742; @pmid24227677]</span>  
+R packages: [Rbowtie](http://bioconductor.org/packages/release/bioc/html/Rbowtie.html), [Rbowtie2](http://bioconductor.org/packages/release/bioc/html/Rbowtie2.html), [QuasR](http://bioconductor.org/packages/release/bioc/html/QuasR.html) <span class="citeref">[@pmid25417205]</span>, [Rsubread](http://bioconductor.org/packages/release/bioc/html/Rsubread.html) <span class="citeref">[@pmid23558742; @pmid24227677]</span>  
   
 __[Mapping quality](http://genome.sph.umich.edu/wiki/Mapping_Quality_Scores) scores__ <span class="citeref">[MAQ aligner in @pmid18714091]</span>:  
 - base qualities (Phred scores)  
@@ -455,7 +503,10 @@ Use samtools to index the file
 indexBam(sr_bamFile)
 ```
 
-----
+All functions from [samtools](http://www.htslib.org/) are available with R (e.g. <span style="color:blue">sortBam</span>, <span style="color:blue">countBam</span>, <span style="color:blue">filterBam</span>, <span style="color:blue">mergeBam</span>, etc.)
+
+
+# BAM file import
 
 Define what to import
 ```{r cache=T}
@@ -468,18 +519,21 @@ flag=scanBamFlag(isDuplicate=FALSE)
 param=ScanBamParam(which=which,what=what,flag=flag)
 ```
 
-import single-end reads
+
+# Import single-end reads
 ```{r cache=T}
 srbam <- readGAlignments(sr,param=param)
 srbam[1:2]
 ```
 
-import paired-end reads
+# Import paired-end reads
 ```{r warning=F, cache=T}
 prbam <- readGAlignmentPairs(pr)
 prbam[1:2]
 ```
 
+There is also a <span style="color:blue">BamFile</span> function to create a reference to a large BAM file without importing it (as for <span style="color:blue">FaFile</span>).  
+See also the [GenomicFiles](http://bioconductor.org/packages/release/bioc/html/GenomicFiles.html) package for working on many, large files
 
 # Outline
  1. <span style="color:grey">What is NGS? Why BioC for NGS?</span>
@@ -525,7 +579,7 @@ eg
 ```
 
 
--------
+# IRanges 
 
 A bigger IRanges:  
 ```{r cache=T}
@@ -537,7 +591,7 @@ ir
 ```
 
 
--------
+# IRanges 
 
 Vector-like behavior: _length, [_  
 Accessors: _start, end, width, names_  
@@ -549,7 +603,7 @@ names(eg)
 ```
 
 
--------
+# IRanges 
 
 Some useful functions:
 ```{r}
@@ -568,7 +622,8 @@ length(irl)
 head(elementNROWS(irl))
 ```
 
-List = list with all elements of the same type
+# S4Vectors List objects
+List = list with all elements of the same type. See `?List`
 ```{r}
 start(irl)[1:2]
 log(start(irl)[1:2])
@@ -576,9 +631,13 @@ log(start(irl)[1:2])
 
 # Genomic ranges
 - __GRanges builds on IRanges__
-    + 'seqnames' (typically chromosomes) and 'strand'
+    + 'seqnames' (typically chromosomes) and 'strand' ('+', '-' or '*')
     + (optional) 'seqinfo' for genome information
     + (optional) 'mcols' for 'metadata' data frame on each range
+
+- __Genome coordinates__
+    + [1-based](https://www.biostars.org/p/84686/)
+    + 'left-most' ('start' of ranges on the 'minus' strand are the left-most coordinate, rather than the 5' coordinate)  
 
 Package [GenomicRanges](http://bioconductor.org/packages/release/bioc/html/GenomicRanges.html):
 ```{r}
@@ -586,10 +645,374 @@ library(GenomicRanges)
 ```
 
 
-GRanges builds on IRanges, IRangesList,...
-'seqnames' (typically chromosomes) and 'strand'
-(optional) 'seqlengths' for genome information 
-(optional) 'mcols' for 'metadata' data frame on each range
+# GRanges  
+A typical use case:
+```{r echo=FALSE}
+options(showHeadLines=3)
+options(showTailLines=3)
+```
+```{r warning=F, message=F}
+library(TxDb.Dmelanogaster.UCSC.dm3.ensGene)
+txdb <- TxDb.Dmelanogaster.UCSC.dm3.ensGene
+(gr <- exons(txdb))
+```
+
+
+# GRanges
+
+<img src="figs/GRanges.png" style="display: block; margin: auto;" />
+<br/>
+
+Operations on GRanges are generally _seqnames-aware_ and _strand-aware_ (see argument `ignore.strand`)
+
+
+# GRangesList
+```{r cache=T}
+(grl <- exonsBy(txdb,by="gene"))
+```
+
+# Intra-ranges operations
+
+See `?'intra-range-methods'`
+
+```{r echo=F, eval=F}
+#plotRange function
+plotRanges <- function(x, xlim = x, main = deparse(substitute(x)),
+col = "black", sep = 0.5, cextitle=1, cexaxis=1, xaxis=T,...)
+{
+height <- 1
+if (is(xlim, "Ranges"))
+xlim <- c(min(start(xlim)), max(end(xlim)))
+bins <- disjointBins(IRanges(start(x), end(x) + 1))
+plot.new()
+plot.window(xlim, c(0, max(bins)*(height + sep)))
+ybottom <- bins * (sep + height) - height
+rect(start(x)-0.5, ybottom, end(x)+0.5, ybottom + height, col = col, ...)
+if (xaxis)
+(axis(1,cex.axis=cexaxis,padj=1))
+title(main,cex.main=cextitle)
+}
+```
+
+
+```{r echo=F,eval=F}
+png("./figs/RangesOperations_intraRange.png",
+     width = 768, height = 768,res=72)
+par(mfrow=c(5,1))
+plotRanges((irs=IRanges(start=25,end=55)),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,col=rep(c("blue","red"),each=3))
+plotRanges(shift(irs,40),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(resize(irs,20,fix="start"),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(promoters(irs,upstream=20,downstream=1),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(flank(irs,20,start=F),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+dev.off()
+
+```
+
+<img src="figs/RangesOperations_intraRange.png" style="display: block; margin: auto;" />
+<br/>
+Also <span style="color:blue">reflect</span>, <span style="color:blue">narrow</span> and <span style="color:blue">threebands</span>, <span style="color:blue">restrict</span> and <span style="color:blue">trim</span>
+
+
+# Inter-ranges operations
+
+See `?'inter-range-methods'`
+```{r, echo=F, eval=F}
+#Create irs
+irs = IRanges(start=c(1,9,25,46,53,87),
+              end=c(50,33,44,60,65,96))
+#Plot irs
+png("./figs/RangesOperations.png",
+     width = 850, height = 768,res=72)
+par(mfrow=c(5,1))
+plotRanges(irs,xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(reduce(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(gaps(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plotRanges(disjoin(irs),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+plot(1:100,c(coverage(irs),rep(0,4)),type="l",axes=F,xlab="",ylab="",lwd=3)
+title(main="coverage(irs)",cex.main=2)
+axis(side=2,lwd=2,cex.axis=2,at=0:3,labels=0:3)
+axis(1,lwd=2,cex.axis=2,padj=1)
+dev.off()
+```
+
+<img src="figs/RangesOperations.png" style="display: block; margin: auto;" />
+
+
+# Set operations - Nearest methods
+
+See `?'setops-methods'`
+```{r echo=F,eval=F}
+png("./figs/RangesOperations_setops.png",
+     width = 768, height = 768,res=72)
+par(mfrow=c(5,1))
+plotRanges(irs,xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,col=rep(c("blue","red"),each=3))
+plotRanges(union(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,main="union")
+plotRanges(intersect(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,main="intersect")
+plotRanges(setdiff(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,col="blue",main="setdiff(blue,red)")
+plotRanges(setdiff(irs[4:6],irs[1:3]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5,col="red",main="setdiff(red,blue)")
+dev.off()
+
+```
+
+<img src="figs/RangesOperations_setops.png" style="display: block; margin: auto;" />
+<br/>
+See also `?'nearest-methods'` including <span style="color:blue">nearest</span>, <span style="color:blue">precede</span>, <span style="color:blue">follow</span> and <span style="color:blue">distance</span>,
+
+
+# Between-range operations / Overlaps
+
+_Q: Number of TSS located at >500bp from another gene?_  
+
+Get all genes and transcrits:
+```{r cache=T}
+Dmg <- genes(txdb) 
+Dmt <- transcriptsBy(txdb,by="gene")
+```
+Get all TSS:
+```{r cache=T}
+Dm_tss <- unlist(reduce(promoters(Dmt,up=0,down=1),min.gap=0L))
+```
+
+Proportion of TSS overlapping with more than 1 gene +/- 500bp:
+```{r  cache=T,warning=F}
+mean(countOverlaps(Dm_tss,Dmg+500) > 1) #!strand-aware
+mean(countOverlaps(Dm_tss,Dmg+500,ignore.strand=T) > 1)
+```
+
+
+# Overlaps  
+
+Obtaining the overlaps:  
+```{r cache=T, warning=F}
+fov <- findOverlaps(Dm_tss,Dmg+500,ignore.strand=T) ; fov[1:3]
+```
+Two genes on opposite strands that are overlapping:
+```{r cache=T}
+Dmg[subjectHits(fov)[queryHits(fov)==1]]
+```
+
+_Q: How many reads in srbam overlap with gene FBgn0002521?_  
+```{r cache=T}
+length(subsetByOverlaps(srbam,Dmg["FBgn0002521"]))
+```
+
+_Q: How many reads in srbam overlap with exons of FBgn0002521?_  
+```{r cache=T}
+length(srbam[overlapsAny(srbam,grl[["FBgn0002521"]])])
+```
+
+
+# Counting reads mapping on features  
+
+Reads mapping on exons:
+```{r cache=T}
+ctex <- summarizeOverlaps(features = grl[seqnames(Dmg)=="chr4"],
+                             reads = srbam,
+                              mode = Union)
+```
+
+<img src="figs/countmodes.png" style="display: block; margin: auto;" />
+
+```{r cache=T}
+head(assays(ctex)$counts)
+```
+
+
+# SummarizedExperiment
+<span class="citeref">[@pmid25633503]</span>
+<img src="figs/summarizedExperiment_Object.png" style="display: block; margin: auto;" />
+
+
+# Rle
+
+```{r cache=T}
+srbam <- readGAlignments(sr)
+(covr <- coverage(srbam))
+```
+
+# Average profile on gene bodies
+Genes on chromosome 4:
+```{r cache=T}
+gn4 <- Dmg[seqnames(Dmg)=="chr4"]
+```
+
+Extract gene level profiles:
+```{r cache=T}
+profgn4 <- covr[gn4]
+profgn4[strand(gn4)=="-"] <- lapply(profgn4[strand(gn4)=="-"],rev)
+names(profgn4) <- names(gn4) ; profgn4[1:2]
+```
+
+Extract the first 1Kb as a matrix:
+```{r cache=T}
+profgn4 <- profgn4[elementNROWS(profgn4)>=1000]
+profgn4 <- as(lapply(profgn4,window,1,1000),"RleList")
+mat1kb <- matrix(as.numeric(unlist(profgn4, use.names=F)),
+                 nrow=length(profgn4), byrow=T,
+                 dimnames=list(names(profgn4),NULL))
+mat1kb <- mat1kb[rowSums(mat1kb)>0,]
+```
+  
+  
+# Average profile on gene bodies
+
+Plot the average profile:
+```{r cache=T}
+df1Kb <- data.frame(Coordinate=1:1000,
+                    Coverage=apply(mat1kb,2,mean,na.rm=T,trim=0.03))
+ggplot(df1Kb,aes(x=Coordinate,y=Coverage))+
+  geom_line()
+```
+
+
+# Extract sequences in a BSgenome using a GRanges
+```{r  cache=T}
+getSeq(Dmelanogaster,gn4[1:2])
+Views(Dmelanogaster,gn4[1:2])
+```
+
+
+# Outline
+ 1. <span style="color:grey">What is NGS? Why BioC for NGS?</span>
+ 2. <span style="color:grey">Working with sequences</span>
+ 3. <span style="color:grey">Working with aligned reads</span>
+ 4. <span style="color:grey">Working with ranges</span>
+ 5. Annotations
+ 6. <span style="color:grey">Import / Export</span>
+ 7. <span style="color:grey">Visualization</span>
+
+# Annotations
+<img src="figs/AnnotationStructure.png" style="display: block; margin: auto;" />
+```{r echo=F,message=F,warning=F}
+library(org.Dm.eg.db)
+```
+
+# Annotations
+
+- __[AnnotationDBi](http://bioconductor.org/packages/release/bioc/html/AnnotationDbi.html)__  
+    + select
+    + keys / keytype
+    + columns
+```{r message=F}
+select(org.Dm.eg.db,
+       keys=c('FBgn0015664','FBgn0015602'),keytype="FLYBASE",
+       columns=c('SYMBOL','UNIGENE','ENTREZID','FLYBASECG'))
+```
+
+- __[GenomicFeatures](http://bioconductor.org/packages/release/bioc/html/GenomicFeatures.html)__: build and manipulate TxDb  
+- __[OrganismDbi](http://bioconductor.org/packages/release/bioc/html/OrganismDbi.html)__ : Human, Mouse, Rat ([BiocView](http://bioconductor.org/packages/release/BiocViews.html#___OrganismDb))  
+
+
+# AnnotationHub
+
+- __[AnnotationHub](http://bioconductor.org/packages/release/bioc/html/AnnotationHub.html)__
+
+```{r eval=F}
+library(AnnotationHub)
+hub <- AnnotationHub()
+length(hub) # >43500 datasets
+unique(hub$dataprovider)
+head(unique(hub$species))
+head(unique(ah$rdataclass))
+```
+
+   + Data from ENCODE, EpigenomeRoadMap, 1000 Genomes project, Ensembl, NCBI, Inparanoid8, dbSNP,...    
+   + Screen datasets from large projects
+   + liftOver files
+   + Assemblies and annotation files for non-model organisms
+   + ...
+
+
+# Outline
+ 1. <span style="color:grey">What is NGS? Why BioC for NGS?</span>
+ 2. <span style="color:grey">Working with sequences</span>
+ 3. <span style="color:grey">Working with aligned reads</span>
+ 4. <span style="color:grey">Working with ranges</span>
+ 5. <span style="color:grey">Annotations</span>
+ 6. Import / Export
+ 7. <span style="color:grey">Visualization</span>
+
+
+# Import/Export
+
+- __[rtracklayer](http://bioconductor.org/packages/release/bioc/html/rtracklayer.html)__ <span class="citeref">[@pmid19468054]</span>  
+    + import/export of track data (GFF, BED, WIG, bedGraph, BigWig)
+    + interface to UCSC [genome browser](http://genome.ucsc.edu/cgi-bin/hgTracks) and [table browser](http://genome.ucsc.edu/cgi-bin/hgTables)
+
+- __[SRAdb](http://bioconductor.org/packages/release/bioc/html/SRAdb.html)__ <span class="citeref">[@pmid23323543]</span>  
+    + browse and interact with NCBI's [Short Read Archive](http://www.ncbi.nlm.nih.gov/sra)
+    + interface with [IGV](http://www.broadinstitute.org/igv/)     
+
+- __[biomaRt](http://bioconductor.org/packages/release/bioc/html/biomaRt.html)__ <span class="citeref">[@pmid19617889;@pmid16082012]</span>   
+    + interface to [Biomart](http://www.biomart.org/) databases  
+
+- __[GEOquery](http://bioconductor.org/packages/release/bioc/html/GEOquery.html)__ <span class="citeref">[@pmid17496320]</span>     
+    + interface to NCBI [GEO](http://www.ncbi.nlm.nih.gov/geo/)  
+
+
+# Outline
+ 1. <span style="color:grey">What is NGS? Why BioC for NGS?</span>
+ 2. <span style="color:grey">Working with sequences</span>
+ 3. <span style="color:grey">Working with aligned reads</span>
+ 4. <span style="color:grey">Working with ranges</span>
+ 5. <span style="color:grey">Annotations</span>
+ 6. <span style="color:grey">Import / Export</span>
+ 7. Visualization
+
+
+# Visualization
+
+- Genome browser-type: [Gviz](https://bioconductor.org/packages/release/bioc/html/Gviz.html), [ggbio](https://bioconductor.org/packages/release/bioc/html/ggbio.html), [Sushi](https://www.bioconductor.org/packages/release/bioc/html/Sushi.html)  
+- More specialized packages: [gtrellis](https://bioconductor.org/packages/release/bioc/html/gtrellis.html), [GenVisR](https://bioconductor.org/packages/release/bioc/html/GenVisR.html), [OmicCircos](https://bioconductor.org/packages/release/bioc/html/OmicCircos.html), [circlize](https://cran.r-project.org/web/packages/circlize/index.html), [EnrichedHeatmap](http://bioconductor.org/packages/release/bioc/html/EnrichedHeatmap.html),...  
+
+
+<img src="figs/Gviz_snapshot.png" style="display: block; margin: auto;" />
+
+
+# Conclusions
+<br/>
+<br/>
+   
+- A solid infrastructure for analyzing all kinds of NGS data  
+- Efficient manipulation of large strings/ranges/vectors and sets of  
+- Active development and most recent advances in analysis methods  
+- Large and active community provides support and updates  
+- Great functions for data summaries and graphical displays - ideal for exploratory analyses  
+- Large projects also have their solutions ([BiocParrallel](http://bioconductor.org/packages/release/bioc/html/BiocParallel.html), [GenomicFiles](http://bioconductor.org/packages/release/bioc/html/GenomicFiles.html), [h5vc](http://bioconductor.org/packages/release/bioc/html/h5vc.html),...; see <span class="citeref">[@scalabgeno;@pmid24451629]</span>)  
+
+
+# Other useful resources
+<br/>
+<br/>
+    
+- Bioconductor [courses & conferences](http://bioconductor.org/help/course-materials/)
+- Bioconductor [workflows](http://bioconductor.org/help/workflows/)
+- [BiocViews](http://bioconductor.org/packages/release/BiocViews.html#___Software) & Package vignettes
+- Bioconductor articles & books
+- [Stackoverflow](http://stackoverflow.com/), [Biostars](https://www.biostars.org/), [SEQanswers](http://seqanswers.com/),...
+
+
+# Major Bioconductor contributors
+
+<br/>
+<br/>
+   
+- Michael Lawrence, Genentech Research and Early Development, USA.  
+- Martin Morgan, Roswell Park Cancer Institute, USA.
+- Valerie Obenchain, Roswell Park Cancer Institute, USA.
+- Hervé Pagès, Fred Hutchinson Cancer Research Center, USA.
+- Patrick Aboyoun, Oracle, USA. 
+<br/>
+<br/>
+<p style="font-size:150%;text-align:center;">[Bioconductor Core Team](http://bioconductor.org/about/core-team/)</p>
+
+---------------------  
+
+<br/>
+<br/>
+<br/>
+<br/>
+<p style="font-size:200%;text-align:center;color:blue">Thank you for your attention!</p>
 
 
 # References {.referencePage}

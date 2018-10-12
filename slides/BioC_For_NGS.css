@@ -314,16 +314,46 @@ div.slide h1 {
     -webkit-column-count: 2; /* chrome, safari */
     -moz-column-count: 2;    /* firefox */
 }
-
 .col3 {
     columns-count: 3;
     -webkit-column-count: 3;
     -moz-column-count: 3;
 }
 
+/*To control more precisely what to put in each column, use:*/
+.col2-left{
+  float: left;
+  width: 50%;
+  text-align: left;
+}
+.col2-right{
+  float: right;
+  width: 50%;
+  text-align: left;
+}
+
+.col3-left{
+  float: left;
+  width: 33%;
+  text-align: left;
+}
+.col3-center{
+  display: inline-block;
+  width: 33%;
+  text-align: left;
+}
+.col3-right{
+  float: right;
+  width: 33%;
+  text-align: left;
+}
+
+
 .citeref {
   font-size: 0.6em;
 }
+
+
 
 div.slide.titlepage {
   background-image: url("figs/BioinfoBiostat_bandeau.png");
