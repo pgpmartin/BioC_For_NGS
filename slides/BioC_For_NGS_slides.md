@@ -1,7 +1,7 @@
 ---
 title: "Introduction to R and Bioconductor for the analysis of NGS data"
 author: "Pascal Martin"
-date: "10 octobre 2018"
+date: "16 octobre 2018"
 output: 
  slidy_presentation:
      highlight: default

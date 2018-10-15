@@ -632,7 +632,7 @@ Here, we only briefly present classical sequence alignement tools available in \
 \subsubsection{Pairwise alignment.}
 %==============
 
-The main function \Rfunction{pairwiseAlignment} provides functionalities to perform global (\href{http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm}{Needleman–Wunsch}), local (\href{http://en.wikipedia.org/wiki/Smith-Waterman_algorithm}{Smith-Waterman}) and overlap (ends-free) pairwise alignments while tuning \emph{substitution scoring} and \emph{gap penalties}.\\
+The main function \Rfunction{pairwiseAlignment} provides functionalities to perform global (\href{http://en.wikipedia.org/wiki/Needleman-Wunsch_algorithm}{Needleman-Wunsch}), local (\href{http://en.wikipedia.org/wiki/Smith-Waterman_algorithm}{Smith-Waterman}) and overlap (ends-free) pairwise alignments while tuning \emph{substitution scoring} and \emph{gap penalties}.\\
 
 Align the consensus ecdysone receptor response element to a region of chromosome 2L were such a motif is present:
 <<pairwiseAlignment_ex1,cache=TRUE>>=
@@ -667,18 +667,23 @@ pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
 
 Playing with gap penalties:
 <<pairwiseAlignment_ex4,cache=TRUE>>=
-pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
                   type='global')
-pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
                   gapExtension=-6,type='global')
-pairwiseAlignment('GTGTCAATACGACAGCAATCTG','AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
+pairwiseAlignment('GTGTCAATACGACAGCAATCTG',
+                  'AGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG',
                   gapOpening=-60,type='global')
 @
 
 Accessors and methods:
 <<pairwiseAlignment_utilsAndAccess,cache=TRUE>>=
-paln=pairwiseAlignment(DNAStringSet(c('GTGTCAATACGACAGCAATCTG','TAAGGTCATAGTGT')),
-                       DNAString('TCGCCATAGGTCAATAGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG'),
+paln=pairwiseAlignment(
+               DNAStringSet(c('GTGTCAATACGACAGCAATCTG',
+                              'TAAGGTCATAGTGT')),
+               DNAString('TCGCCATAGGTCAATAGTGTGAATTACAGCAAATCTCTGTTCAATTTCTG'),
                        type='global-local')
 pattern(paln)
 subject(paln)
@@ -870,8 +875,11 @@ See \Rcode{help('intra-range-methods',package="IRanges")} for other methods
 \label{subsubsec:IRanges_interops}
 Function to plot ranges (adapted from the \Biocpkg{IRanges} vignette):
 <<plotRanges_function,cache=TRUE>>=
-plotRanges <- function(x, xlim = x, main = deparse(substitute(x)),
-                       col = "black", sep = 0.5, cextitle=1, cexaxis=1, xaxis=T,...) 
+plotRanges <- function(x, 
+                       xlim = x, 
+                       main = deparse(substitute(x)),
+                       col = "black", sep = 0.5, 
+                       cextitle=1, cexaxis=1, xaxis=T,...) 
 {
   height <- 1
   if (is(xlim, "Ranges"))
@@ -890,7 +898,9 @@ plotRanges <- function(x, xlim = x, main = deparse(substitute(x)),
 
 These inter-range operations, called \emph{endomorphisms}, apply on a set of ranges and return a set of ranges:
 <<inter-ranges_ops,cache=TRUE>>=
-irs=ir[which(start(ir)<=100 & end(ir)<=100)[c(3:4,8,14,17:18)]] #select some ranges in [1:100]
+#select some ranges in [1:100]:
+irs=ir[which(start(ir)<=100 & 
+               end(ir)<=100)[c(3:4,8,14,17:18)]] 
 irs
 reduce(irs)
 disjoin(irs)
@@ -925,10 +935,14 @@ intersect(irs[1:3],irs[4:6])
 Illustrated in Figure~\ref{fig:fig_IRanges_setops_unionintersect}:
 <<fig_IRanges_setops_unionintersect,fig.align="center",fig.width=4, fig.height=8, fig.cap='Union and intersect on IRanges.',fig.pos="!h",out.width="5in",out.height="5in">>=
 par(mfrow=c(4,1))
- plotRanges(irs[1:3],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
- plotRanges(irs[4:6],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
- plotRanges(union(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
- plotRanges(intersect(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(irs[1:3], xlim=c(0,100), xaxis=T, 
+            cextitle=2, cexaxis=1.5)
+ plotRanges(irs[4:6], xlim=c(0,100), xaxis=T, 
+            cextitle=2, cexaxis=1.5)
+ plotRanges(union(irs[1:3], irs[4:6]), xlim=c(0,100), xaxis=T, 
+            cextitle=2, cexaxis=1.5)
+ plotRanges(intersect(irs[1:3], irs[4:6]), xlim=c(0,100), xaxis=T, 
+            cextitle=2, cexaxis=1.5)
 @
 \medskip
 
@@ -943,8 +957,10 @@ Illustrated in Figure~\ref{fig:fig_IRanges_setops_setdiff}:
 par(mfrow=c(4,1))
  plotRanges(irs[1:3],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
  plotRanges(irs[4:6],xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
- plotRanges(setdiff(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
- plotRanges(setdiff(irs[4:6],irs[1:3]),xlim=c(0,100),xaxis=T, cextitle=2, cexaxis=1.5)
+ plotRanges(setdiff(irs[1:3],irs[4:6]),xlim=c(0,100),xaxis=T, 
+            cextitle=2, cexaxis=1.5)
+ plotRanges(setdiff(irs[4:6],irs[1:3]),xlim=c(0,100),xaxis=T, 
+            cextitle=2, cexaxis=1.5)
 @
 \medskip
 
@@ -987,7 +1003,8 @@ These are mainly methods to find overlaps between ranges. These functions are ex
 \Rclass{Rle} objects:
 <<Rle_objects,cache=TRUE>>=
 set.seed(123)
-lambda = c(rep(0.001, 3500), seq(0.001, 10, length = 500), #From IRanges vignette
+lambda = c(rep(0.001, 3500), #From IRanges vignette
+           seq(0.001, 10, length = 500), 
             seq(10, 0.001, length = 500))
 xRle=Rle(rpois(1e4,lambda))
 yRle=Rle(rpois(1e4, lambda[c(251:length(lambda), 1:250)]))
@@ -1100,7 +1117,8 @@ Specific functions are provided for fast looping over \Rclass{Views} and \Rclass
 <<Views_looping,cache=TRUE>>=
 viewMins(irs_views) #same as min(irs_views)
 viewSums(irs_views) #same as sum(irs_views)
-viewWhichMaxs(irs_views) #get the (first) coordinate of viewMaxs (which.max also works)
+viewWhichMaxs(irs_views) #get the (first) coordinate of viewMaxs 
+# (which.max also works)
 viewRangeMins(irs_views) #get the (first) range of viewMins
 viewApply(irs_views,sd)
 viewMeans(xyRleList_views)
@@ -1126,10 +1144,12 @@ require(GenomicRanges,warn.conflicts = F, quietly = T)
 
 \subsubsection{GRanges objects}
 \label{subsubsec:GRanges_objects}
-Here, we will present some of the classes and functions defined in the \Biocpkg{GenomicRanges} package. This package is central to most \Bioconductor{} users who analyze NGS data, so you should consider reading thoroughly the excellent vignettes associated with this package.\\
+Here, we will present some of the classes and functions defined in the \Biocpkg{GenomicRanges} package. This package is central to \Bioconductor{} users who analyze NGS data, so you should consider reading thoroughly the excellent vignettes associated with this package.\\
 \medskip
 The main class defined in \Biocpkg{GenomicRanges} is the \Rclass{GRanges} class which acts as a container for genomic locations and their associated annotations (see \Rcode{?GRanges}).\\
+
 \medskip
+
 \Rclass{GRanges} (and \Rclass{GRangesList}) build on \Rclass{IRanges} (and \Rclass{IRangesList} respectively) with the following specificities:
 
 \begin{itemize}
@@ -1269,7 +1289,7 @@ See also \Rcode{help('GenomicRanges-comparison',"GenomicRanges")} for other func
 A very common task on genomic ranges is to search for overlaps between sets of genomic ranges which corresponds to an operation between ranges. These functions are defined for several classes of objects, including \Rclass{IRanges}, \Rclass{GRanges} and their list-type counterparts \Rclass{IRangesList} and \Rclass{GRangesList} but also \Rclass{Views} and \Rclass{ViewsList} among others. Details on function definitions can be found using \Rcode{?'findOverlaps-methods'}.
 
 As first example, let's count how many of the transcription start sites (TSS) in the Drosophila melanogaster genome are located at more than 500bp from another gene:
-<<countOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE>>=
+<<countOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE,warning=FALSE>>=
 Dm_tss=unlist(reduce(promoters(Dmt,up=0,down=1))) #get all TSS
 cov_tss_g500=countOverlaps(Dm_tss,Dmg+500) #strand-aware!
 table(cov_tss_g500)
@@ -1278,7 +1298,7 @@ cov_tss_g500_bs=countOverlaps(Dm_tss,Dmg+500,ignore.strand=T) #both strands
 sum(cov_tss_g500_bs>1)
 @
 Getting the corresponding overlaps with \Rfunction{findOverlaps}:
-<<findOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE>>=
+<<findOverlaps_example,eval=TRUE,echo=TRUE,message=FALSE,cache=TRUE,warning=FALSE>>=
 fov_tss_g500_bs=findOverlaps(Dm_tss,Dmg+500,ignore.strand=T)
 Dmg[c(1,1383)]
 @
@@ -1287,7 +1307,8 @@ Now, imagine we have a set of 10K NGS reads:
 <<randomreads2L,cache=TRUE>>=
 set.seed(0)
 randomreads2L=GRanges(seqnames="chr2L",
-                    ranges=IRanges(start=floor(runif(10000,5000,50000)),width=100),
+                    ranges=IRanges(start=floor(runif(10000,5000,50000)),
+                                   width=100),
                     strand="*")
 @
 And we want to select only the reads overlapping with those two genes:
@@ -1386,7 +1407,7 @@ myFastq[1:5]
 head(sread(myFastq),3)
 head(quality(myFastq),3)
 head(id(myFastq),3)
-encoding(quality(myFastq))
+encoding(quality(myFastq))[2:50]
 alphabet(sread(myFastq))
 @
 
@@ -1425,8 +1446,8 @@ nr_myFastq
 ##--------- ##
 @
 
-One major reason to analyze FASTQ files is to evaluate the quality and potential biases associated with the sequencing process. Outside of R, the \href{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/}{Fastqc} tool is widely used to perform such an analysis. It uses a random sample drawn from the FASTQ file to obtain some statistics on the reads. One of its limitation is that it generates one report for each sample which does not simplify comparisons between the samples.\\
-The \Biocpkg{ShortRead} package provides efficient functions to generate an HTML QA report for multiple samples:
+One major reason to analyze FASTQ files is to evaluate the quality and potential biases associated with the sequencing process. Outside of R, the \href{http://www.bioinformatics.babraham.ac.uk/projects/fastqc/}{Fastqc} tool is widely used to perform such an analysis. It uses a random sample drawn from the FASTQ file to obtain some statistics on the reads. One of its limitation is that it generates one report for each sample but \href{https://multiqc.info/}{MultiQC} allows to easily integrate them (as well as results from many other tools).\\
+The \Biocpkg{ShortRead} package also provides efficient functions to generate an HTML QA report for multiple samples:
 <<ShortRead_qa2,cache=TRUE>>=
 fqPath = system.file(package="ShortRead", "extdata", "E-MTAB-1147")
 fqFiles = dir(fqPath, pattern="fastq.gz", full=TRUE)
@@ -1450,12 +1471,13 @@ An alternative is to use the \Rfunction{qa} function from which it is relatively
 qaOnFastq = qa(fqPath,"fastq.gz",BPPARAM=SerialParam()) #collect statistics
 qaOnFastq[["readCounts"]]
 readQuals <- qaOnFastq[["readQualityScore"]]
-ggplot(readQuals,aes(x=quality,y=density,colour=lane))+
-                    geom_line(size=1)+
-                    scale_colour_discrete(name="Lane",
-                                          breaks=c("ERR127302_1_subset.fastq.gz",
-                                                   "ERR127302_2_subset.fastq.gz"),
-                                          labels=c("ERR127302_1","ERR127302_2"))
+ggplot(readQuals,aes(x=quality, y=density, colour=lane))+
+    geom_line(size=1)+
+    scale_colour_discrete(name="Lane",
+                          breaks=c("ERR127302_1_subset.fastq.gz",
+                                   "ERR127302_2_subset.fastq.gz"),
+                          labels=c("ERR127302_1","ERR127302_2")) +
+    theme_bw()
 @
 
 \bigskip
@@ -1574,7 +1596,7 @@ Once aligned, the reads and their genomic coordinates (defined by chromosome, po
 Here, we will mainly use the following libraries:
 
 \begin{itemize}
-  \item \Biocpkg{Rsamtools} which provides an interface to samtools, bcftools and tabix (see \url{https://github.com/samtools})
+  \item \Biocpkg{Rsamtools} which provides an interface to samtools, bcftools and tabix (see \href{http://www.htslib.org/}{htslib})
   \item \Biocpkg{GenomicAlignments} which provides efficient tools to manipulate short genomic alignments
 \end{itemize}
 
@@ -1670,6 +1692,7 @@ junctions(mysrbam2)[[1]] #and the corresponding junctions
 @
 See below and in \Rcode{help('junctions-methods',"GenomicAlignments")}, \Rcode{help('findOverlaps-methods',"GenomicAlignments")} and \Rcode{help('coverage-methods',"GenomicAlignments")} for other methods defined on \Rclass{GAlignments} objects.\\
 %\fixme{TODO : add an example or mention only the use of BamViews (Rsamtools) to extract references to several bam files on specific views}
+
 \subsubsection{Paired-end reads}
 \label{subsub:Paired-end_reads}
 An example of paired-end data is available in the \Biocexptpkg{pasillaBamSubset} package:  
@@ -1763,9 +1786,11 @@ The result is an \Rclass{RleList} organized by chromosomes.\\
 
 We can extract specific \Rclass{Views} from this object:
 <<coverage_extract_Views,cache=TRUE>>=
+#convert imported intervals to GRanges:
 which_chr4_gr=GRanges(seqnames="chr4",
-                      ranges=which$chr4,strand="*") #convert imported intervals to GRanges
-ex_chr4=exonsByOverlaps(TxDb.Dmelanogaster.UCSC.dm3.ensGene,which_chr4_gr) #get exons
+                      ranges=which$chr4,strand="*") 
+#Get the exons
+ex_chr4=exonsByOverlaps(TxDb.Dmelanogaster.UCSC.dm3.ensGene,which_chr4_gr) 
 head(Views(cvg_sr$chr4,ranges(ex_chr4))) #extract Views
 @
 \medskip
@@ -1790,9 +1815,12 @@ ChIP_ga=readGAlignments(ChIPex_path,
 Then we can compute the coverage after applying some tranformation on the reads (shift or resize):
 <<coverage_shift_reduce,cache=TRUE>>=
 coverage(ChIP_ga)$chr1
-coverage(ChIP_ga,shift=150)$chr1 #directly in coverage (!shift is not strand-aware)
-coverage(ChIP_ga,shift=150*as.numeric(paste(strand(ChIP_ga),"1",sep="")))$chr1 #now "strand-aware" shift
-coverage(resize(granges(ChIP_ga),300))$chr1 #resize via a GRanges (strand-aware)
+#directly in coverage (!shift is not strand-aware):
+coverage(ChIP_ga,shift=150)$chr1 
+#now "strand-aware" shift:
+coverage(ChIP_ga,shift=150*as.numeric(paste(strand(ChIP_ga),"1",sep="")))$chr1 
+#resize via a GRanges (strand-aware):
+coverage(resize(granges(ChIP_ga),300))$chr1 
 @
 
 \medskip
@@ -1878,8 +1906,13 @@ assays(summarizeOverlaps(exbygn_chr4,myprbam,mode="Union", #ignore strand
                          ignore.strand=T))$counts
 
 assays(summarizeOverlaps(exbygn_chr4,mysrbam2,mode="Union"))$counts
-assays(summarizeOverlaps(exbygn_chr4,mysrbam2,mode="Union", #resize the reads to 100
-                         preprocess.reads=function(x){resize(granges(x),100)}))$counts
+#resize the reads to 100:
+assays(
+    summarizeOverlaps(exbygn_chr4,mysrbam2,mode="Union", 
+                      preprocess.reads=function(x){
+                          resize(granges(x),100)
+                          })
+    )$counts
 @
 See \Rcode{?summarizeOverlaps} for details and examples.\\
 
@@ -2000,32 +2033,41 @@ keytypes(org.Dm.eg.db) #same as columns(org.Dm.eg.db) in this case
 uniKeys = keys(org.Dm.eg.db,keytype="UNIPROT")[c(5,6,24)]
 
 cols = c("SYMBOL","GO")
-select(org.Dm.eg.db,keys=uniKeys[1:2],columns=cols,keytype="UNIPROT")
+select(org.Dm.eg.db,
+       keys=uniKeys[1:2],
+       columns=cols,
+       keytype="UNIPROT")
 @
 \medskip
 
 The \Biocpkg{GO.db} package can be used to retrieve information on the identified \href{http://geneontology.org/}{Gene Ontology} categories (chosen also based on \href{http://geneontology.org/page/guide-go-evidence-codes}{Evidence codes}):
 <<Annotation_GOdb,eval=-1,echo=TRUE,cache=TRUE>>=
 library(GO.db)
-mygos=c("GO:0002121","GO:0003858","GO:0016319")
-select(GO.db,columns=columns(GO.db)[1:3],
-       keys=mygos,keytype="GOID")
+mygos=c("GO:0000791","GO:0002165", "GO:0008270")
+select(GO.db,
+       columns=columns(GO.db)[2:4],
+       keys=mygos,
+       keytype="GOID")
 @
 
 We can also extract a whole table as a \Rclass{data.frame}:
 <<Annotation_GOdb_toTable,eval=-1,echo=TRUE,cache=TRUE>>=
 ls("package:GO.db")
-toTable(GOTERM)[1:3,1:4]
+toTable(GOTERM)[1:3,2:4]
 @
 
 \medskip
 
 We can also search for a specific pattern in the keys:
 <<Annotation_OrgDb_keySearch,cache=TRUE>>=
-keys(org.Dm.eg.db,keytype="SYMBOL",pattern="EcR")
+keys(org.Dm.eg.db, 
+     keytype="SYMBOL", 
+     pattern="EcR")
 
-select(org.Dm.eg.db,keys=c("EcR","DopEcR"),
-       columns=c("ENTREZID","CHR","FLYBASE","GENENAME"),keytype="SYMBOL")
+select(org.Dm.eg.db,
+       keys=c("EcR","DopEcR"),
+       columns=c("ENTREZID","FLYBASE","GENENAME"),
+       keytype="SYMBOL")
 @
 \medskip
 
@@ -2054,10 +2096,14 @@ See the vignettes of the \Biocpkg{AnnotationDbi} packages for details.
 Homology \Rclass{InparanoidDb} packages contain the gene orthologs for a number of species. They are extracted from the \href{http://inparanoid.sbc.su.se/cgi-bin/index.cgi}{Inparanoid database}~\cite{pmid18055500} and can be interrogated both ways:
 <<Annotation_InparanoidDb,eval=-1,echo=TRUE,cache=TRUE>>=
 library(hom.Dm.inp.db)
-select(hom.Dm.inp.db,columns=c("HOMO_SAPIENS","CULEX_PIPIENS"),
-       keys=c("FBpp0084497", "FBpp0077213"),keytype="DROSOPHILA_MELANOGASTER")
-select(hom.Dm.inp.db,columns=c("HOMO_SAPIENS","DROSOPHILA_MELANOGASTER"),
-       keys=c("CPIJ014347","CPIJ005780"),keytype="CULEX_PIPIENS")
+select(hom.Dm.inp.db,
+       columns=c("HOMO_SAPIENS","CULEX_PIPIENS"),
+       keys=c("FBpp0084497", "FBpp0077213"),
+       keytype="DROSOPHILA_MELANOGASTER")
+select(hom.Dm.inp.db,
+       columns=c("HOMO_SAPIENS","DROSOPHILA_MELANOGASTER"),
+       keys=c("CPIJ014347","CPIJ005780"),
+       keytype="CULEX_PIPIENS")
 @
 \medskip
 
@@ -2175,7 +2221,7 @@ To explore this object we take a look at its metadata:
 <<AnnotationHub_Explore_ah,eval=TRUE,echo=TRUE,cache=TRUE>>=
 annot_ah=mcols(ah) #Informations on the different records
 table(annot_ah$rdataclass) #type of files that can be retrieved
-table(annot_ah$dataprovider) #providers
+table(annot_ah$dataprovider)[1:6] #providers
 @
 \medskip
 
@@ -2185,7 +2231,10 @@ query(ah,"orgDb") #search for available orgDb packages
 query(ah,c("orgDb","Arabidopsis")) #those for Arabidopsis only
 newAt=ah[["AH57965"]] #retrieve the orgDb object
 keytypes(newAt) #explore the object
-select(newAt,keys="AT1G01010",keytype="TAIR",columns=c("REFSEQ","ENTREZID","GO"))
+select(newAt,
+       keys="AT1G01010",
+       keytype="TAIR",
+       columns=c("REFSEQ","ENTREZID","GO"))
 @
 Note that it is also possible to select resources from the Hub using \Rfunction{\textdollar},\Rfunction{subset} and \Rfunction{display}
 \medskip
@@ -2197,8 +2246,10 @@ epiFiles
 unique(epiFiles$species) # sanity check
 unique(epiFiles$genome) # sanity check
 table(epiFiles$sourcetype) #types of files available
-head(sort(table(epiFiles$description), decreasing=TRUE)) #more precise description of the files available
-query(ah , c("EpigenomeRoadMap","H3K36ME3","broadPeak","liver")) #a more precise query
+#more precise description of the files available:
+head(sort(table(epiFiles$description), decreasing=TRUE)) 
+#a more precise query:
+query(ah , c("EpigenomeRoadMap","H3K36ME3","broadPeak","liver")) 
 k36Peaks=ah[["AH29351"]] #retrieve the data
 k36Peaks # a GRanges object
 metadata(k36Peaks)
@@ -2404,6 +2455,8 @@ Disconnect from the database with:
 dbDisconnect(sra_con)
 @
 
+\pagebreak
+
 %=====================================================================
 \section{Visualization of genomic data}
 %=====================================================================
@@ -2425,7 +2478,7 @@ require(Gviz, quietly = T)
 ##--------- ##
 @
 
-Visualizing NGS data in specific genomic context is an excellent, although not sufficient, mean to assess data quality or the robustness and specificity of findings obtained from data analysis. A number of \href{http://en.wikipedia.org/wiki/Genome_browser}{Genome Browsers} are available for this task, such as \href{http://genome.ucsc.edu/}{UCSC Genome Browser}, \href{http://gmod.org/wiki/GBrowse}{Gbrowse} or \href{http://www.broadinstitute.org/igv/}{IGV}. They allow to interactively 'navigate' the genome and to display several annotation and data types. However, batch extraction of genome views is not always available. Here, we briefly illustrate some tools available in \Bioconductor{} to assemble data in genome browser-like plots.
+Visualizing NGS data in specific genomic context is an excellent, although not sufficient, mean to assess data quality or the robustness and specificity of findings obtained from data analysis. A number of \href{http://en.wikipedia.org/wiki/Genome_browser}{Genome Browsers} are available for this task, such as \href{http://genome.ucsc.edu/}{UCSC Genome Browser}, \href{http://gmod.org/wiki/GBrowse}{Gbrowse} or \href{http://www.broadinstitute.org/igv/}{IGV} or \href{https://jbrowse.org/}{jbrowse}. They allow to interactively 'navigate' the genome and to display several annotation and data types. However, batch extraction of genome views is not always available. Here, we briefly illustrate some tools available in \Bioconductor{} to assemble data in genome browser-like plots.
 
 \R{} is quite famous for the excellent quality of its graphics and its graphical capabilities in general (see \href{http://cran.r-project.org/web/views/Graphics.html}{CRAN Task view on graphics}). R base graphics  already provide a number of functionalities. The \CRANpkg{lattice} package has provided a complementary approach. Later, the \CRANpkg{ggplot2} package~\cite{Wickham_ggplot2_book} has implemented the concepts presented in the book 'The Grammar of Graphics'~\cite{Wilkinson_GrammarOfGraphics} and is now widely used (see an example at paragraph~\ref{sub:QC_on_FASTQ}). The \CRANpkg{ggvis} further adds interactivity and web graphics to \CRANpkg{ggplot2}.\\
 
@@ -2458,9 +2511,10 @@ The \Biocpkg{Gviz} package vignette is extremely well documented. Here we only b
 
 \medskip
 
-\begin{table}[!h]
+\begin{table}[h]
 \begin{center}
-\begin{tabular}{l|l|l|p{9.8cm}}
+\hskip-3.0cm
+\begin{tabular}{l|l|l|p{6.8cm}}
   \hline
   Gviz class        & File type  & Extension   & Details \\
   \hline
@@ -2492,7 +2546,7 @@ The \Biocpkg{Gviz} package vignette is extremely well documented. Here we only b
 
 \medskip
 
-\begin{table}[!h]
+\begin{table}[h]
 \begin{center}
 \begin{tabular}{l|l}
   \hline
@@ -2532,9 +2586,13 @@ ROI=GRanges(seqnames="chr4",ranges=which$chr4[1],strand="*")
 Let's search for the motif 'TATAAA' in this region:
 <<Gviz_TATAAAgr,cache=TRUE>>=
 TATAAA_on_ROI=shift(union(ranges(matchPattern('TATAAA',
-                               subseq(Dmelanogaster$chr4,start=start(ROI),end=end(ROI)))),
+                               subseq(Dmelanogaster$chr4,
+                                      start=start(ROI),
+                                      end=end(ROI)))),
                  ranges(matchPattern('TTTATA',
-                              subseq(Dmelanogaster$chr4,start=start(ROI),end=end(ROI))))),
+                              subseq(Dmelanogaster$chr4,
+                                     start=start(ROI),
+                                     end=end(ROI))))),
                  start(ROI))
 TATAAAgr=GRanges(seqnames="chr4",
                         ranges=TATAAA_on_ROI,
@@ -2553,8 +2611,9 @@ gtrack=GenomeAxisTrack()
 
 An ideogram of the chromosome can be downloaded from UCSC using:
 <<Gviz_IdeogramTrack,eval=FALSE,cache=TRUE>>=
-itrack=IdeogramTrack(genome="dm3",chromosome="chr4")
-#I'm having some unresolved issues with these ideograms so I don't use them below
+itrack=IdeogramTrack(genome="dm3", chromosome="chr4")
+#I'm having some unresolved issues with these ideograms
+#so I don't use them below
 @
 
 Let's take a look at our plot at this point (Figure~\ref{fig:Gviz_gb1}):
@@ -2675,7 +2734,7 @@ toLatex(sessionInfo())
 
 %Scrit extraction:
 %library(knitr)
-%fn="/DATA/WORK/Enseignement/Formation Agrocampus Fev 2015/BioC_for_NGS_PMartin.Rnw"
-%purl(fn,output="/DATA/WORK/Enseignement/Formation Agrocampus Fev 2015/BioC_for_NGS_PMartin_script.r")
+%fn="BioC_for_NGS_PMartin.Rnw"
+%purl(fn,output="BioC_for_NGS_PMartin_script.r")
 
 \end{document}
