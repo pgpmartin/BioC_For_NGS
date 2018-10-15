@@ -357,6 +357,9 @@ pfms <- lapply(names(pfms),
 #Plot
 motifStack(pfms, layout="tree")
 @
+
+For those using \CRANpkg{ggplot2} for plotting, there is also the excellent \Githubpkg{omarwagih/ggseqlogo} package.
+
 \medskip
 
 
